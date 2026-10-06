@@ -7,7 +7,7 @@
 | `/` | 임시 메인(서비스 소개, 로그인·가입 링크) — 003-portal에서 포털로 교체 | SSR | - | 서비스 이름 |
 | `/signup` | 회원가입 | SSR(폼은 `action`) | - | noindex |
 | `/login` | 로그인 | SSR(폼은 `action`) | - | noindex |
-| `/write` | 새 글 작성 | 클라이언트 전용 에디터(Milkdown Crepe 지연 로딩) | /me, /blogs/{handle}/categories | noindex |
+| `/write` | 새 글 작성(작성 → "완료" → 발행 설정 레이어 → 발행). 1분 자동저장, 이어 쓰기 확인 | 클라이언트 전용 에디터(Milkdown Crepe 지연 로딩) | /me, /blogs/{handle}/categories, /posts/drafts/latest | noindex |
 | `/write/:postId` | 글 수정 | 위와 같음 | /posts/{id} | noindex |
 | `/manage` | 내 블로그 관리: 글 목록(임시저장 포함) | SSR | /blogs/{handle}/manage/posts | noindex |
 | `/manage/categories` | 카테고리 관리 | SSR + 클라이언트 상호작용 | /blogs/{handle}/categories | noindex |

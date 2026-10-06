@@ -77,25 +77,39 @@
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
-| POST | /posts | 로그인 | PostWrite | 201 PostDetail |
+| POST | /posts/drafts | 로그인 | DraftWrite | 201 `{ id, savedAt }` (새 임시저장 글) |
+| PUT | /posts/{id}/draft | 주인 | DraftWrite | 200 `{ id, savedAt }` (자동저장·임시저장, 발행본에는 영향 없음) |
+| GET | /posts/drafts/latest | 로그인 | - | 200 `{ id, title, savedAt }` 또는 204 (이어 쓰기 확인용) |
+| POST | /posts/{id}/publish | 주인 | PublishSettings | 200 PostDetail (발행 설정 화면의 발행 버튼, 수정 발행 포함) |
 | GET | /posts/{id} | 모두(비공개·임시저장은 주인만) | - | 200 PostDetail, 권한 없으면 404 |
-| PUT | /posts/{id} | 주인 | PostWrite | 200 PostDetail |
 | DELETE | /posts/{id} | 주인 | - | 204 (status=DELETED) |
 | POST | /posts/{id}/views | 모두 | - | 204 (중복 판단 후 조회수 증가, SSR loader가 호출) |
 
-`PostWrite`:
+글쓰기는 작성(임시저장) → 완료 → 발행 설정 → 발행 순서다(FR-013, FR-107, FR-108). "완료"는 화면 전환일 뿐 API 호출이 없다.
+
+`DraftWrite` (작성 화면의 내용):
 ```json
 {
-  "title": "제목(1~200자)",
+  "title": "제목(0~200자, 임시저장은 빈 제목 허용)",
   "contentMarkdown": "본문 Markdown(최대 200,000자)",
   "categoryId": 12,
-  "tags": ["spring", "jpa"],
-  "visibility": "PUBLIC",
-  "publish": true
+  "tags": ["spring", "jpa"]
 }
 ```
-- `publish: false` → DRAFT로 저장(임시저장). 이미 PUBLISHED인 글은 false로 되돌릴 수 없음(422 `POST_ALREADY_PUBLISHED`).
 - 저장 시 본문의 `/media/{id}` 참조를 등록(ATTACHED), 빠진 이미지는 ORPHANED.
+- 발행된 글의 draft는 별도 사본으로 저장되며 `publish` 전까지 독자 화면에 반영되지 않는다.
+
+`PublishSettings` (발행 설정 화면):
+```json
+{
+  "visibility": "PUBLIC",
+  "thumbnailMediaId": 88,
+  "commentEnabled": true,
+  "categoryId": 12,
+  "tags": ["spring", "jpa"]
+}
+```
+- 발행 시 제목 1~200자 필수, 본문 비어 있으면 422 `POST_CONTENT_EMPTY`.
 - 태그는 소문자·공백 제거로 정규화, 최대 10개, 각 1~30자.
 
 `PostDetail`:
@@ -106,7 +120,7 @@
   "summary": "...", "thumbnailUrl": "/media/88",
   "category": { "id": 12, "name": "Spring" }, "tags": ["spring"],
   "visibility": "PUBLIC", "status": "PUBLISHED",
-  "viewCount": 10, "commentCount": 2,
+  "viewCount": 10, "commentCount": 2, "commentEnabled": true,
   "author": { "nickname": "마르코", "profileImageUrl": null },
   "prev": { "id": 122, "title": "..." }, "next": null,
   "publishedAt": "...", "updatedAt": "..."

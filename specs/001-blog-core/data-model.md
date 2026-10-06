@@ -16,6 +16,7 @@ erDiagram
     CATEGORIES |o--o{ POSTS : "classifies (NULL=미분류)"
     POSTS ||--o{ POST_TAGS : ""
     TAGS ||--o{ POST_TAGS : ""
+    POSTS ||--o| POST_DRAFTS : "작성 중 사본"
     POSTS ||--o{ COMMENTS : "has"
     USERS ||--o{ COMMENTS : "writes"
     COMMENTS |o--o{ COMMENTS : "reply (1단계)"
@@ -72,6 +73,12 @@ erDiagram
         int comment_count
         datetime published_at
         datetime deleted_at
+    }
+    POST_DRAFTS {
+        bigint post_id PK,FK
+        varchar title
+        mediumtext content_md
+        datetime saved_at
     }
     TAGS {
         bigint id PK
@@ -170,6 +177,7 @@ erDiagram
 | status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED (004에서 SCHEDULED, 005에서 HIDDEN 추가) |
 | view_count, comment_count | INT | 비정규화 카운터 (like_count는 002에서 추가) |
 | published_at | DATETIME(6) | 최초 발행 시각 |
+| comment_enabled | BOOLEAN | 글별 댓글 허용 (FR-107), 블로그 설정이 꺼져 있으면 무시 |
 | deleted_at | DATETIME(6) | 휴지통 이동 시각, 30일 후 영구 삭제 (FR-084) |
 
 인덱스: (blog_id, status, visibility, published_at DESC), (category_id). 검색용 FULLTEXT는 002에서 추가.
@@ -178,6 +186,20 @@ erDiagram
 `status = PUBLISHED AND visibility = PUBLIC AND 작성자 users.status = ACTIVE`. 이 조건은 리포지토리 한 곳의 공통 스펙/쿼리 조각으로만 표현한다.
 
 상태 전이: DRAFT → PUBLISHED(발행), PUBLISHED → DRAFT 불가, DRAFT/PUBLISHED → DELETED(주인, 휴지통). DELETED → 이전 상태(30일 내 복구, FR-084). DELETED 후 30일이 지나면 영구 삭제하고 그 글의 이미지를 ORPHANED로 표시(FR-073).
+
+## post_drafts
+발행된 글을 수정하는 동안의 작성본과, 아직 발행되지 않은 글의 작성본 (FR-016, FR-108).
+
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| post_id | BIGINT | PK, FK posts |
+| title | VARCHAR(200) | |
+| content_md | MEDIUMTEXT | |
+| category_id | BIGINT | |
+| tags_json | JSON | |
+| saved_at | DATETIME(6) | 자동저장 시각 |
+
+새 글: posts(status=DRAFT) 행 + post_drafts 행 생성. 발행: post_drafts 내용을 posts에 반영(HTML 변환·살균), post_drafts 삭제. 발행된 글 수정: post_drafts만 갱신, `publish` 때 반영.
 
 ## tags / post_tags
 - tags: id, name VARCHAR(30) UNIQUE(소문자·앞뒤 공백 제거로 정규화), FULLTEXT 불필요.
