@@ -6,6 +6,9 @@
 - **Decision**: Spring `@Scheduled`로 단순하게 간다(1.0은 backend 1대, 001 R26과 같은 방식).
   - 스케줄러는 1분마다 "수집할 차례인 피드"만 골라낸다: `external_feeds.status = ACTIVE AND next_fetch_at <= now`, 한 번에 최대 `blog.external.batch-size`(기본 50)개.
   - 고른 피드는 크기가 정해진 별도 스레드 풀(`blog.external.fetch-threads`, 기본 4)에서 동시에 받는다. 피드 하나가 느려도 나머지가 밀리지 않게 하기 위해서다. 연결 5초, 읽기 10초, 응답 최대 2MB 제한.
+  - 스레드 설정은 두 가지를 따로 둔다.
+    - 스케줄러 풀: Spring 기본값은 스레드 1개라서 이미지 정리, 휴지통 비우기, 피드 선택 같은 `@Scheduled` 작업이 서로를 기다린다. `spring.task.scheduling.pool.size=3`으로 늘린다. 스케줄러 작업은 "고르고 넘기기"만 하고 오래 걸리는 일은 하지 않는다.
+    - 피드 수집 전용 풀: `ThreadPoolTaskExecutor` 빈 `feedFetchExecutor`(core=max=`blog.external.fetch-threads`, 기본 4, 큐 `batch-size`, 큐가 차면 이번 차례는 건너뛰고 다음 분에 다시 고름). 메일 발송 등 다른 비동기 작업과 풀을 공유하지 않는다. 종료 시 진행 중 작업이 끝나기를 최대 30초 기다린다.
   - 받은 뒤 `next_fetch_at = now + 수집 주기(기본 30분, blog.external.fetch-interval)`로 미룬다. 피드마다 `next_fetch_at`에 무작위 지연(0~5분)을 더해 같은 시각에 몰리지 않게 한다.
   - 변경 확인: 저장해 둔 `ETag`, `Last-Modified`로 조건부 요청(`If-None-Match`, `If-Modified-Since`)을 보내고 304면 내려받지 않는다(FR-116).
   - 파싱은 ROME(RSS 0.9x/1.0/2.0, Atom 1.0)으로 한다. 같은 글 판별은 `guid`, 없으면 원문 링크의 정규화 값(FR-115).
