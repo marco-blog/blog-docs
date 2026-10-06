@@ -4,6 +4,102 @@
 
 DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INCREMENT`. 공통 컬럼 `created_at`, `updated_at`.
 
+## ERD
+
+```mermaid
+erDiagram
+    USERS ||--|| BLOGS : "owns"
+    USERS ||--o{ REFRESH_TOKENS : "has"
+    BLOGS ||--o{ CATEGORIES : "has"
+    CATEGORIES ||--o{ CATEGORIES : "parent of (2단계)"
+    BLOGS ||--o{ POSTS : "contains"
+    CATEGORIES |o--o{ POSTS : "classifies (NULL=미분류)"
+    POSTS ||--o{ POST_TAGS : ""
+    TAGS ||--o{ POST_TAGS : ""
+    POSTS ||--o{ COMMENTS : "has"
+    USERS ||--o{ COMMENTS : "writes"
+    COMMENTS |o--o{ COMMENTS : "reply (1단계)"
+    USERS ||--o{ MEDIA : "uploads"
+    POSTS |o--o{ MEDIA : "attaches (TEMP=NULL)"
+
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar password_hash
+        varchar nickname
+        varchar role
+        varchar status
+        int failed_login_count
+        datetime locked_until
+        varchar terms_version
+        datetime terms_agreed_at
+    }
+    REFRESH_TOKENS {
+        bigint id PK
+        bigint user_id FK
+        char family_id
+        char token_hash UK
+        datetime expires_at
+        datetime family_expires_at
+        datetime used_at
+        datetime revoked_at
+    }
+    BLOGS {
+        bigint id PK
+        bigint user_id FK,UK
+        varchar handle UK
+        varchar title
+        varchar description
+        boolean comment_enabled
+    }
+    CATEGORIES {
+        bigint id PK
+        bigint blog_id FK
+        bigint parent_id FK
+        varchar name
+        int sort_order
+    }
+    POSTS {
+        bigint id PK
+        bigint blog_id FK
+        bigint category_id FK
+        varchar title
+        mediumtext content_md
+        mediumtext content_html
+        varchar visibility
+        varchar status
+        int view_count
+        int comment_count
+        datetime published_at
+        datetime deleted_at
+    }
+    TAGS {
+        bigint id PK
+        varchar name UK
+    }
+    POST_TAGS {
+        bigint post_id PK,FK
+        bigint tag_id PK,FK
+    }
+    COMMENTS {
+        bigint id PK
+        bigint post_id FK
+        bigint user_id FK
+        bigint parent_id FK
+        varchar content
+        varchar status
+    }
+    MEDIA {
+        bigint id PK
+        bigint owner_id FK
+        bigint post_id FK
+        varchar status
+        varchar stored_path
+        varchar mime
+        int size_bytes
+    }
+```
+
 ## users
 | 컬럼 | 타입 | 제약 / 규칙 |
 |---|---|---|
@@ -18,6 +114,8 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 | failed_login_count | INT | 기본 0 (FR-007) |
 | locked_until | DATETIME(6) | NULL 가능 |
 | withdrawn_at | DATETIME(6) | |
+| terms_version | VARCHAR(20) | 동의한 약관 버전 (FR-081) |
+| terms_agreed_at | DATETIME(6) | 동의 일시 |
 
 상태 전이: ACTIVE ↔ SUSPENDED(관리자), ACTIVE → WITHDRAWN(본인, 되돌릴 수 없음). WITHDRAWN 전이 시 그 회원의 모든 글 visibility=PRIVATE, 모든 리프레시 토큰 무효화(FR-009).
 
@@ -72,13 +170,14 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 | status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED (003에서 SCHEDULED, 004에서 HIDDEN 추가) |
 | view_count, comment_count | INT | 비정규화 카운터 (like_count는 002에서 추가) |
 | published_at | DATETIME(6) | 최초 발행 시각 |
+| deleted_at | DATETIME(6) | 휴지통 이동 시각, 30일 후 영구 삭제 (FR-084) |
 
 인덱스: (blog_id, status, visibility, published_at DESC), (category_id). 검색용 FULLTEXT는 002에서 추가.
 
 "공개 노출 가능" 조건(모든 목록·검색·피드·사이트맵·RSS 공통, FR-018):
 `status = PUBLISHED AND visibility = PUBLIC AND 작성자 users.status = ACTIVE`. 이 조건은 리포지토리 한 곳의 공통 스펙/쿼리 조각으로만 표현한다.
 
-상태 전이: DRAFT → PUBLISHED(발행), PUBLISHED → DRAFT 불가, DRAFT/PUBLISHED → DELETED(주인, 소프트 삭제). DELETED 후 30일이 지나면 영구 삭제하고 그 글의 이미지를 ORPHANED로 표시(FR-073).
+상태 전이: DRAFT → PUBLISHED(발행), PUBLISHED → DRAFT 불가, DRAFT/PUBLISHED → DELETED(주인, 휴지통). DELETED → 이전 상태(30일 내 복구, FR-084). DELETED 후 30일이 지나면 영구 삭제하고 그 글의 이미지를 ORPHANED로 표시(FR-073).
 
 ## tags / post_tags
 - tags: id, name VARCHAR(30) UNIQUE(소문자·앞뒤 공백 제거로 정규화), FULLTEXT 불필요.

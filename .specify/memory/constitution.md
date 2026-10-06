@@ -58,10 +58,11 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 1. `docs` 저장소에서 `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` 순서로 스펙을 만든다.
 2. 스펙은 기능 단위로 나눈다(현재 001 핵심 → 002 구독·탐색 → 003 블로그 기능 → 004 트랙백·운영 순서). 한 스펙이 사용자 스토리 5개를 넘으면 나눈다.
 3. 구현은 `docs` 저장소에서 Claude Code를 열고 `../backend`, `../front`를 추가 디렉터리로 붙여 `/speckit-implement`로 진행한다. tasks.md의 경로는 `backend/...`, `front/...` 접두어로 저장소를 구분한다.
-4. 코드 변경은 해당 저장소에서 PR로 올리고, PR 설명에 스펙 경로(`docs/specs/NNN-...`)를 적는다.
+4. 각 스펙의 data-model.md는 Mermaid `erDiagram`으로 ERD를 포함한다(GitHub에서 바로 렌더링). 이전 스펙의 테이블과 연결되는 관계도 표시한다.
+5. 코드 변경은 해당 저장소에서 PR로 올리고, PR 설명에 스펙 경로(`docs/specs/NNN-...`)를 적는다.
 
 ## Governance
 
 이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VI을 확인한다.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 2.1.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
