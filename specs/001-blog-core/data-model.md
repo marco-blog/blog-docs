@@ -1,6 +1,6 @@
 # Data Model: 001 블로그 핵심
 
-> 002~004 스펙에서 추가될 테이블(좋아요, 구독, 알림, 통계, 신고, 트랙백, 방명록 등)은 각 스펙의 data-model에서 Flyway 마이그레이션으로 더한다.
+> 002~005 스펙에서 추가될 테이블(좋아요, 구독, 알림, 통계, 신고, 트랙백, 방명록 등)은 각 스펙의 data-model에서 Flyway 마이그레이션으로 더한다.
 
 DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INCREMENT`. 공통 컬럼 `created_at`, `updated_at`.
 
@@ -167,7 +167,7 @@ erDiagram
 | summary | VARCHAR(300) | content_text 앞 150자, 메타 description |
 | thumbnail_url | VARCHAR(500) | 본문 첫 이미지 |
 | visibility | VARCHAR(10) | PUBLIC / PRIVATE (FR-015) |
-| status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED (003에서 SCHEDULED, 004에서 HIDDEN 추가) |
+| status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED (004에서 SCHEDULED, 005에서 HIDDEN 추가) |
 | view_count, comment_count | INT | 비정규화 카운터 (like_count는 002에서 추가) |
 | published_at | DATETIME(6) | 최초 발행 시각 |
 | deleted_at | DATETIME(6) | 휴지통 이동 시각, 30일 후 영구 삭제 (FR-084) |

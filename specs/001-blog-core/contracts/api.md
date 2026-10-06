@@ -67,7 +67,7 @@
 | GET | /blogs/{handle}/posts?category=&tag=&page= | 모두 | - | 200 Page<PostSummary> (공개 노출 가능 글만, 주인이 요청해도 같음) |
 | GET | /blogs/{handle}/manage/posts?status=&page= | 주인 | - | 200 Page<PostSummary> (임시저장·비공개 포함) |
 
-정지·탈퇴 회원의 블로그: GET /blogs/{handle}은 404 `BLOG_NOT_FOUND`(정지 안내 화면은 004에서 추가).
+정지·탈퇴 회원의 블로그: GET /blogs/{handle}은 404 `BLOG_NOT_FOUND`(정지 안내 화면은 005에서 추가).
 
 `CategoryNode`: `{ id, name, postCount, children: [CategoryNode] }`
 

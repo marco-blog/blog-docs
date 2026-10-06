@@ -1,6 +1,6 @@
 # Feature Specification: 블로그 꾸미기와 글 옵션 (방명록·공지·보관함·보호 글·예약)
 
-**Feature Branch**: `003-blog-features`
+**Feature Branch**: `004-blog-features`
 
 **Created**: 2026-10-06
 

@@ -1,6 +1,6 @@
 # Feature Specification: 트랙백과 운영 (신고·관리자·트랙백)
 
-**Feature Branch**: `004-trackback-moderation`
+**Feature Branch**: `005-trackback-moderation`
 
 **Created**: 2026-10-06
 

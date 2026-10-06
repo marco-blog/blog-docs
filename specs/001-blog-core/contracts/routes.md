@@ -4,7 +4,7 @@
 
 | 경로 | 화면 | 렌더링 | loader 호출 API | meta |
 |---|---|---|---|---|
-| `/` | 임시 메인(서비스 소개, 로그인·가입 링크) — 002에서 최신·인기 글로 교체 | SSR | - | 서비스 이름 |
+| `/` | 임시 메인(서비스 소개, 로그인·가입 링크) — 003-portal에서 포털로 교체 | SSR | - | 서비스 이름 |
 | `/signup` | 회원가입 | SSR(폼은 `action`) | - | noindex |
 | `/login` | 로그인 | SSR(폼은 `action`) | - | noindex |
 | `/write` | 새 글 작성 | 클라이언트 전용 에디터(Milkdown Crepe 지연 로딩) | /me, /blogs/{handle}/categories | noindex |
@@ -30,7 +30,7 @@
 
 ## 예약어
 
-블로그 주소로 쓸 수 없는 이름. 최상위 경로를 추가할 때 이 목록과 backend의 예약어 상수를 같은 PR에서 함께 고친다(002~004에서 쓸 경로도 미리 포함).
+블로그 주소로 쓸 수 없는 이름. 최상위 경로를 추가할 때 이 목록과 backend의 예약어 상수를 같은 PR에서 함께 고친다(002~005에서 쓸 경로도 미리 포함).
 
 ```
 admin, api, assets, static, media, public, favicon.ico, robots.txt, sitemap.xml,

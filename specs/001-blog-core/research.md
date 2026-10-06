@@ -1,6 +1,6 @@
 # Research: 멀티 유저 블로그 플랫폼 MVP
 
-> R15~R21은 002~004 스펙용으로 미리 조사한 내용이다. 해당 스펙의 `/speckit-plan` 때 그 스펙의 research.md로 옮긴다.
+> R15~R21은 002~005 스펙용으로 미리 조사한 내용이다. 해당 스펙의 `/speckit-plan` 때 그 스펙의 research.md로 옮긴다.
 
 버전 확인일: 2026-10-06 (Maven Central, npm 레지스트리 기준)
 
