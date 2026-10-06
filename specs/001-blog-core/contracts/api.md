@@ -52,6 +52,11 @@
 | 409 | POST_NOT_PUBLISHED | 발행 전 글에 작성 중 사본 폐기 요청 |
 | 423 | ACCOUNT_LOCKED | 로그인 5회 실패 후 10분 잠금 |
 | 429 | MEDIA_TEMP_QUOTA_EXCEEDED | 회원별 임시 한도 초과 |
+| 404 | RELEASE_NOTE_NOT_FOUND | 없는 버전, 또는 관리자가 아닌 사람이 요청한 초안(DRAFT) 노트 (003 FR-161) |
+| 409 | RELEASE_NOTE_VERSION_TAKEN | 이미 있는 릴리스 노트 버전 (006 FR-167) |
+| 409 | RELEASE_NOTE_REVISION_CONFLICT | 릴리스 노트 저장 시 `baseRevisionNo`가 현재 수정본 번호와 다름(다른 관리자가 먼저 저장, 006 FR-168) |
+| 409 | RELEASE_NOTE_ONCE_PUBLISHED | 한 번이라도 게시한 노트의 삭제 시도 (006 FR-167) |
+| 422 | RELEASE_NOTE_VERSION_LOCKED | 한 번이라도 게시한 노트의 버전 번호 변경 시도 (006 FR-167) |
 
 ## 인증 (auth) — FR-001~007, FR-081, FR-133
 
@@ -71,7 +76,7 @@
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
-| GET | /me | 로그인 | - | 200 `{ userId, email, nickname, bio, profileImageUrl, role, locale, timeZone, blogs: [{ handle, title }] }` (`blogs`는 삭제하지 않은 내 블로그, 만든 순) |
+| GET | /me | 로그인 | - | 200 `{ userId, email, nickname, bio, profileImageUrl, role, locale, timeZone, blogs: [{ handle, title }], unseenReleaseNote }` (`blogs`는 삭제하지 않은 내 블로그, 만든 순. `unseenReleaseNote`는 003 FR-163의 배너용 `{ version, title }` 또는 null: 게시된 최신 노트가 `users.last_seen_release_version`보다 새 버전이고 회원 가입 뒤에 게시된 경우에만 값이 있으며, `title`은 화면 언어판(003 FR-161 대체 순서)) |
 | PATCH | /me | 로그인 | `{ nickname?, bio?, profileImageMediaKey?, locale?, timeZone? }` | 200 위와 같음. 프로필 이미지는 `purpose=PROFILE`로 올린 본인 이미지만, 저장 시 ATTACHED. `locale`은 ko·en·ja·zh-CN, `timeZone`은 IANA ID |
 | DELETE | /me | 로그인 | `{ password }` | 204, 되돌릴 수 없음. 모든 블로그의 글 전부 비공개, 모든 토큰 폐기, 30일 보존 기간 후 개인정보 파기(복구 기능 없음) |
 | PUT | /me/password | 로그인 | `{ currentPassword, newPassword }` | 204, 현재 기기 외 모든 family 폐기 |
@@ -220,15 +225,80 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 - 버전은 4개 언어 공통 하나(`blog.legal.terms-version`)이며 한국어판이 기준이다. 본문은 backend 리소스 `legal/{terms|privacy}_{lang}.md`를 변환해 준다. 해당 언어 파일이 없으면 영어, 영어도 없으면 한국어.
 - 가입 화면은 `version`을 받아 `/auth/signup`의 `termsVersion`으로 보낸다.
 
+## 릴리스 노트 (release note) — 003 FR-161~166
+
+서비스 릴리스 노트의 독자용 API. 게시(PUBLISHED)된 노트만 다루며, 초안은 관리자에게도 이 API로는 보이지 않는다(관리자는 아래 `/admin/release-notes`를 쓴다). `{version}`은 앞의 `v` 없이 `1.2.0` 형식(`^\d+\.\d+\.\d+$`)이며 front 주소 `/updates/v1.2.0`의 `v`를 떼어 부른다. `lang`을 생략하면 화면 언어 결정 규칙(FR-149)을 따른다.
+
+| 메서드 | 경로 | 권한 | 요청 | 응답 |
+|---|---|---|---|---|
+| GET | /release-notes?lang= | 모두 | - | 200 `{ items: [ReleaseNoteSummary], portalCard: ReleaseNoteSummary \| null }`. `items`는 게시된 노트 전체, 버전 내림차순(SemVer 숫자 비교). front가 major.minor로 묶어 트리를 그린다. `portalCard`는 최신 노트의 `firstPublishedAt`이 `blog.release-notes.portal-card-days` 이내일 때만 값이 있다(003 FR-162) |
+| GET | /release-notes/search?q=&lang=&page= | 모두 | - | 200 Page<`{ version, title, snippet, releaseDate, lang }`>. 게시된 노트의 화면 언어판(없으면 대체 언어판) 제목·본문 검색, 버전 내림차순. `q`는 2~100자(아니면 400 `VALIDATION_FAILED`). `snippet`은 일치 부분 앞뒤 일반 텍스트(최대 160자) (003 FR-165) |
+| GET | /release-notes/{version}?lang= | 모두 | - | 200 ReleaseNoteDetail. 없거나 초안이면 404 `RELEASE_NOTE_NOT_FOUND` |
+| GET | /release-notes/{version}/revisions | 모두 | - | 200 `[{ revisionNo, editedAt }]` (처음 게시한 때의 수정본부터 최신까지, 새 것 먼저. 수정한 관리자는 주지 않음) (003 FR-166) |
+| GET | /release-notes/{version}/revisions/{revisionNo}?lang= | 모두 | - | 200 ReleaseNoteDetail + `{ revisionNo }` (그 수정본의 내용. 처음 게시 전 수정본이면 404 `RELEASE_NOTE_NOT_FOUND`) |
+| POST | /me/release-notes/seen | 로그인 | `{ version }` | 204. 게시된 버전이어야 하며(아니면 404), 저장된 마지막 확인 버전보다 새 버전일 때만 `users.last_seen_release_version`을 바꾼다(더 낮은 버전이면 아무것도 바꾸지 않고 204). 배너 닫기와 버전 페이지 열기에서 부른다 (003 FR-163) |
+
+`/release-notes/search`는 `{version}` 형식(숫자.숫자.숫자)과 겹치지 않는다.
+
+`ReleaseNoteSummary`: `{ version, title, releaseDate, firstPublishedAt, lang }` (`lang`은 실제로 준 언어판)
+
+`ReleaseNoteDetail`:
+```json
+{
+  "version": "1.2.0", "releaseDate": "2026-10-06",
+  "firstPublishedAt": "...", "updatedAt": "...",
+  "requestedLang": "ja", "lang": "en",
+  "title": "...", "contentHtml": "<h2 id=\"새-기능\">새 기능</h2>...",
+  "toc": [ { "level": 2, "text": "새 기능", "anchor": "새-기능" } ],
+  "prev": { "version": "1.1.3", "title": "..." }, "next": null,
+  "revisionCount": 3
+}
+```
+- 언어판 대체: 요청 언어판이 없으면 en, en도 없으면 ko(필수). 제목과 본문은 한 언어판 단위로 함께 대체한다(`lang`이 실제 언어판).
+- `contentHtml`은 글 본문과 같은 Markdown 변환·살균 과정(R8, R24, R25, R27)을 거친 HTML이며, 제목(h2~h4)마다 `id` 앵커를 붙인다. 앵커는 제목 텍스트를 소문자로 바꾸고 공백을 `-`로, 문자·숫자·`-` 외의 기호를 지운 값이며(한글·한자·가나는 유지), 같은 노트 안에서 겹치면 `-2`, `-3`을 붙인다. `toc`는 같은 앵커로 만든 목차(h2~h4).
+- `prev`·`next`는 게시된 노트의 SemVer 순서에서 바로 앞(낮은)·뒤(높은) 버전.
+
 ## 관리자 API 공통 규칙 (006)
 
-- 경로는 `/api/v1/admin/**`. 001은 규칙과 001 데이터에 바로 붙는 아래 엔드포인트만 정하고, 나머지 관리자 API는 006 이후 스펙이 정한다.
+- 경로는 `/api/v1/admin/**`. 001은 규칙과 001 데이터에 바로 붙는 아래 엔드포인트, 그리고 공개 API와 짝을 이루는 릴리스 노트 관리 API(아래 절)만 정하고, 나머지 관리자 API는 006 이후 스펙이 정한다.
 - 매 요청마다 DB의 `users.role`(ADMIN 또는 SUPER_ADMIN)과 `users.status`(ACTIVE)를 확인한다. JWT의 role 클레임은 화면 메뉴 표시용 힌트일 뿐이다.
 - 관리자가 아니면(비로그인 포함) 404 `NOT_FOUND`.
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
 | PATCH | /admin/users/{id}/blog-limit | ADMIN, SUPER_ADMIN | `{ maxBlogs: number \| null }` (0 이상 정수, `null`은 기본값으로 되돌림) | 200 `{ userId, blogCount, maxBlogs, effectiveLimit }`. 지금 가진 블로그보다 작아도 허용(기존 블로그 유지, 새로 만들기만 막힘). 006 FR-106 작업 기록에 변경 전후 값 저장 (006 FR-160) |
+
+### 릴리스 노트 관리 — 006 FR-167·168
+
+| 메서드 | 경로 | 권한 | 요청 | 응답 |
+|---|---|---|---|---|
+| GET | /admin/release-notes?status=&page= | ADMIN, SUPER_ADMIN | - | 200 Page<`{ id, version, status, releaseDate, langs: ["ko", "en"], revisionNo, firstPublishedAt, publishedAt, updatedAt }`> (`status`: DRAFT / PUBLISHED, 생략하면 전체. 버전 내림차순) |
+| POST | /admin/release-notes | ADMIN, SUPER_ADMIN | ReleaseNoteWrite | 201 AdminReleaseNote (status=DRAFT, revisionNo=1). 버전 중복 409 `RELEASE_NOTE_VERSION_TAKEN` |
+| GET | /admin/release-notes/{id} | ADMIN, SUPER_ADMIN | - | 200 AdminReleaseNote (초안 포함) |
+| PUT | /admin/release-notes/{id} | ADMIN, SUPER_ADMIN | ReleaseNoteWrite + `{ baseRevisionNo }` | 200 AdminReleaseNote (새 수정본 생성, 게시 상태면 바로 독자에게 반영). `baseRevisionNo`가 현재와 다르면 409 `RELEASE_NOTE_REVISION_CONFLICT`, 게시 이력이 있는 노트의 버전 변경은 422 `RELEASE_NOTE_VERSION_LOCKED` |
+| POST | /admin/release-notes/{id}/publish | ADMIN, SUPER_ADMIN | - | 200 AdminReleaseNote (status=PUBLISHED, `publishedAt`=지금, 처음이면 `firstPublishedAt`도 설정. 이미 게시 상태면 변화 없이 200) |
+| POST | /admin/release-notes/{id}/unpublish | ADMIN, SUPER_ADMIN | - | 200 AdminReleaseNote (status=DRAFT, 게시 중단) |
+| DELETE | /admin/release-notes/{id} | ADMIN, SUPER_ADMIN | - | 204. 한 번도 게시하지 않은 초안만. 아니면 409 `RELEASE_NOTE_ONCE_PUBLISHED` |
+| POST | /admin/release-notes/preview | ADMIN, SUPER_ADMIN | `{ contentMarkdown }` | 200 `{ contentHtml, toc }` (저장하지 않음, 독자 화면과 같은 변환) |
+| GET | /admin/release-notes/{id}/revisions | ADMIN, SUPER_ADMIN | - | 200 `[{ revisionNo, editedBy: { userId, nickname }, editedAt, status }]` (새 것 먼저, `status`는 저장 당시 상태) |
+| GET | /admin/release-notes/{id}/revisions/{revisionNo} | ADMIN, SUPER_ADMIN | - | 200 ReleaseNoteWrite + `{ revisionNo, editedBy, editedAt, status }` |
+
+`ReleaseNoteWrite`:
+```json
+{
+  "version": "1.2.0",
+  "releaseDate": "2026-10-06",
+  "contents": {
+    "ko": { "title": "1~200자", "contentMarkdown": "1~100,000자" },
+    "en": { "title": "...", "contentMarkdown": "..." }
+  }
+}
+```
+- `version`: `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`(SemVer 핵심 세 숫자, 사전 배포·빌드 표기 없음). 형식이 틀리면 400 `VALIDATION_FAILED`(`fieldErrors[].code` = `INVALID_FORMAT`).
+- `contents`의 키는 `ko`·`en`·`ja`·`zh-CN`. `ko`는 필수(없으면 `fieldErrors` `REQUIRED`, field `contents.ko`). 키를 빼면 그 언어판을 지운다(수정본에는 남음). 한 언어판은 제목과 본문을 모두 가져야 한다.
+- 모든 쓰기(만들기·수정·게시·게시 중단·삭제)는 006 FR-106 작업 기록에 변경 전후 값으로 남긴다.
+
+`AdminReleaseNote`: ReleaseNoteWrite + `{ id, status, revisionNo, firstPublishedAt, publishedAt, createdBy: { userId, nickname }, updatedBy: { userId, nickname }, createdAt, updatedAt }`
 
 ## 프로퍼티 (backend `application.yml`)
 
@@ -264,4 +334,5 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 | blog.jobs.privacy-purge-cron | `0 0 4 * * *` | 탈퇴 30일 경과 개인정보·90일 경과 로그인 기록 파기 (FR-138, FR-139) |
 | blog.privacy.withdrawn-retention | 30d | 탈퇴 후 개인정보 파기까지 |
 | blog.privacy.login-history-retention | 90d | 로그인 기록 보관 |
+| blog.release-notes.portal-card-days | 14d | 최신 릴리스 노트를 포털 메인 카드로 보여주는 기간(처음 게시 시각부터, 003 FR-162) |
 | blog.media.thumbnail.sizes | 50x50,100x100,160x160,300x200,600x400,1200x630 + 각 2배 | 허용 썸네일 크기 |

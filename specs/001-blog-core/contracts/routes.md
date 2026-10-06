@@ -58,6 +58,10 @@
 | `/:handle/manage/feed` | 피드 설정 | 002 FR-046, 006 FR-099 |
 | `/` (교체) | 포털 메인 | 003 FR-034 |
 | `/topics/:major`, `/topics/:major/:minor` | 주제 대분류·소분류 페이지 | 003 FR-078 |
+| `/updates` | 릴리스 노트(위키 형태): 왼쪽 major.minor 버전 트리, 오른쪽 최신 버전 본문·자동 목차. canonical은 최신 버전 주소. SSR, loader는 GET /release-notes, GET /release-notes/{version} | 003 FR-161, FR-164 |
+| `/updates/:version` (`:version`은 `v\d+\.\d+\.\d+`, 예: `/updates/v1.2.0`) | 버전별 릴리스 노트 고유 주소. 제목마다 앵커(`#새-기능`), 이전·다음 버전 링크. 버전 페이지를 열면 로그인 회원의 마지막 확인 버전 갱신(POST /me/release-notes/seen). 초안·없는 버전은 404. 사이트맵 포함 | 003 FR-161, FR-163, FR-164 |
+| `/updates/:version/history`, `/updates/:version/history/:revisionNo` | 수정 이력(게시 후 수정본 목록)과 이전 수정본 보기. noindex | 003 FR-166 |
+| `/updates?q=` | 릴리스 노트 검색(화면 언어, 게시된 노트만). 결과는 오른쪽 영역에 표시. noindex | 003 FR-165 |
 | `/:handle/guestbook` | 방명록 | 004 FR-056 |
 | `/:handle/notice` | 공지 목록 | 004 FR-059 |
 | `/:handle/archive/:year/:month` | 월별 보관함 | 004 FR-061 |
@@ -67,8 +71,11 @@
 | `POST /:handle/:postId/trackback` | 트랙백 받기(backend, 프록시, Origin 검사 제외) | 005 FR-050 |
 | `/:handle/manage/trackbacks` | 받은 트랙백 | 005 FR-053, 006 FR-099 |
 | `/rights-request` | 비회원 권리 침해(저작권 등) 신고 양식 | 005 FR-040 |
-| `/admin`, `/admin/**` | 시스템 관리자 콘솔(대시보드, topics, portal, users, content, reports, external-blogs, reserved-handles, settings, admins, audit-log). 관리자가 아니면 404 | 006 FR-096~106 |
+| `/admin`, `/admin/**` | 시스템 관리자 콘솔(대시보드, topics, portal, users, content, reports, external-blogs, reserved-handles, settings, admins, audit-log, release-notes). 관리자가 아니면 404 | 006 FR-096~106 |
+| `/admin/release-notes`, `/admin/release-notes/new`, `/admin/release-notes/:id`, `/admin/release-notes/:id/revisions` | 릴리스 노트 목록·만들기·수정(언어별 탭, 미리보기, 게시·게시 중단)·수정본 | 006 FR-167·168 |
 | `/:handle/manage/external-blogs`, `/:handle/manage/external-blogs/new` | 내 외부 블로그(등록 신청·소유 인증·수집된 글 주제 변경·해제). 외부 블로그는 회원에 속하므로 내 어느 블로그의 관리 화면에서 열어도 같은 목록이다 | 007 FR-109~112, FR-120, FR-126, 006 FR-099 |
+
+- 릴리스 노트 배너(003 FR-163): 로그인 회원의 모든 화면 공통 레이아웃 상단에 한 줄로 보이며, GET /me 응답의 `unseenReleaseNote`로 그린다. 닫기는 POST /me/release-notes/seen. 포털 메인(`/`)의 릴리스 노트 카드(003 FR-162)는 GET /release-notes 응답의 `portalCard`로 그린다.
 
 ## 블로그별 하위 경로 (`/:handle/...`)
 
@@ -99,7 +106,8 @@ admin, api, assets, static, media, public, build, favicon.ico, robots.txt, sitem
 signup, login, logout, auth, oauth, me, settings, manage, write, edit, password-reset,
 search, tags, tag, topics, topic, category, feed, rss, atom, notifications, explore, popular,
 external, external-blogs, report, reports, rights-request, trackback, locale, lang, legal,
-help, about, terms, privacy, policy, notice, support, health, blog, www, mail, root, system
+help, about, terms, privacy, policy, notice, support, health, blog, www, mail, root, system,
+updates
 ```
 
 `manage`, `write`는 블로그별 하위 경로이기도 하지만 최상위 진입점(`/manage`, `/write` 리다이렉트)으로도 쓰므로 계속 예약어로 둔다. `me`처럼 handle 규칙(3~20자, 영문 소문자·숫자·하이픈)으로는 원래 만들 수 없는 이름도 경로 이름이므로 목록에 남겨 둔다.

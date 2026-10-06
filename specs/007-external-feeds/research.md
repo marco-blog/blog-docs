@@ -4,7 +4,7 @@
 
 ## E1. 피드 수집 스케줄링 (FR-113, FR-116, FR-117)
 - **Decision**: Spring `@Scheduled`로 단순하게 간다(1.0은 backend 1대, 001 R26과 같은 방식).
-  - 스케줄러는 1분마다 "수집할 차례인 피드"만 골라낸다: `external_feeds.status = ACTIVE AND next_fetch_at <= now`, 한 번에 최대 `blog.external.batch-size`(기본 50)개.
+  - 스케줄러는 1분마다 "수집할 차례인 피드"만 골라낸다: `external_blogs.status = ACTIVE AND next_fetch_at <= now`(007 data-model), 한 번에 최대 `blog.external.batch-size`(기본 50)개.
   - 고른 피드는 크기가 정해진 별도 스레드 풀(`blog.external.fetch-threads`, 기본 4)에서 동시에 받는다. 피드 하나가 느려도 나머지가 밀리지 않게 하기 위해서다. 연결 5초, 읽기 10초, 응답 최대 2MB 제한.
   - 스레드 설정은 두 가지를 따로 둔다.
     - 스케줄러 풀: Spring 기본값은 스레드 1개라서 이미지 정리, 휴지통 비우기, 피드 선택 같은 `@Scheduled` 작업이 서로를 기다린다. `spring.task.scheduling.pool.size=3`으로 늘린다. 스케줄러 작업은 "고르고 넘기기"만 하고 오래 걸리는 일은 하지 않는다.

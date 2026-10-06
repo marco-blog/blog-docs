@@ -52,11 +52,11 @@
 - **Rationale**: 변환 비용을 쓰기 시점에 한 번만 낸다. 살균을 서버 한 곳에서 하므로 front는 신뢰된 HTML만 받는다.
 
 ## R9. 검색 (FR-035, SC-007)
-- **Decision**: MySQL FULLTEXT(ngram 파서, token size 2)를 `post(title, content_text)`와 태그 이름에 적용. `content_text`는 HTML에서 태그를 뺀 순수 텍스트.
+- **Decision**: MySQL FULLTEXT(ngram 파서, token size 2)를 `posts(title, content_text)`와 태그 이름(인덱스는 002 data-model)에 적용. `content_text`는 HTML에서 태그를 뺀 순수 텍스트.
 - **Alternatives**: Elasticsearch(원칙 VI 위반, 별도 인프라), LIKE 검색(10만 건에서 2초 목표 불확실).
 
 ## R10. 조회수와 인기 글 (FR-020, 003 FR-034·086)
-- **Decision**: 조회 중복 판단은 Caffeine 캐시(키: postId + 회원 ID 또는 방문자 쿠키 ID, TTL 30분). 집계는 `post.view_count` 증가 + `post_daily_stat(post_id, stat_date, views, likes)` upsert. ~~인기 글은 최근 7일 `views + likes*10` 합계 상위~~ → **대체됨**: 인기 점수 공식은 003 FR-086(조회 수만으로 정하지 않고 끝까지 읽음·좋아요·댓글 가중, 시간 감쇠, 운영자 조정)을 따르며 003의 plan/research에서 정한다. 외부 글은 007 FR-124. 결과를 Caffeine에 5분 캐시하는 방식만 유지.
+- **Decision**: 조회 중복 판단은 Caffeine 캐시(키: postId + 회원 ID 또는 방문자 쿠키 ID, TTL 30분). 집계는 `post.view_count` 증가 + `post_daily_stats(post_id, stat_date, views, read_completes)` upsert(좋아요는 `post_likes.created_at`으로 셈, 003 data-model). ~~인기 글은 최근 7일 `views + likes*10` 합계 상위~~ → **대체됨**: 인기 점수 공식은 003 FR-086(조회 수만으로 정하지 않고 끝까지 읽음·좋아요·댓글 가중, 시간 감쇠, 운영자 조정)을 따르며 003의 plan/research에서 정한다. 외부 글은 007 FR-124. 결과를 Caffeine에 5분 캐시하는 방식만 유지.
 - **Rationale**: 단일 서버 전제(SC-003 규모)에서 충분. 서버가 늘면 Redis로 교체(그때 ADR 갱신).
 
 ## R11. 첨부 파일 저장과 썸네일 (FR-038, FR-039, FR-071~074, FR-130~132, FR-156)
@@ -111,7 +111,7 @@
 - **Decision**:
   - 받기: `POST /{handle}/{postId}/trackback`, `application/x-www-form-urlencoded`(url 필수, title·excerpt·blog_name 선택), 응답은 TrackBack 1.2 XML(`<response><error>0</error></response>` 또는 `<error>1</error><message>…</message>`). front가 backend로 프록시. 문자셋은 `Content-Type`의 charset을 우선, 없으면 UTF-8.
   - 검증: 글 공개·트랙백 허용 확인, 같은 (post, url) 중복 거부, 출처 IP당 10분 10회 제한(Caffeine), 제목·요약은 태그 제거 후 길이 제한.
-  - 보내기: 글 저장 후 트랜잭션 커밋 이벤트에서 비동기(`@Async` + 전용 스레드 풀)로 각 대상에 핑 전송. 연결·응답 시간 제한 각 5초. 결과는 `trackback_ping_log`에 기록. 서비스 안의 주소면 HTTP를 거치지 않고 내부 서비스 호출로 처리.
+  - 보내기: 글 저장 후 트랜잭션 커밋 이벤트에서 비동기(`@Async` + 전용 스레드 풀)로 각 대상에 핑 전송. 연결·응답 시간 제한 각 5초. 결과는 `trackback_ping_logs`에 기록(005 data-model). 서비스 안의 주소면 HTTP를 거치지 않고 내부 서비스 호출로 처리.
   - SSRF 방지: 보낼 주소가 사설·루프백·링크로컬 IP로 해석되면 거부, http/https만 허용, 리다이렉트는 따라가지 않음.
 - **Alternatives**: Pingback(XML-RPC, 범위 밖으로 결정), 동기 전송(외부 지연이 발행을 막음).
 
@@ -122,7 +122,7 @@
 - **Decision**: posts.visibility=PROTECTED(004에서 값 추가) + posts.password_hash(BCrypt). 목록·피드·검색 노출은 001 data-model의 "목록 노출 가능"·"본문 노출 가능" 조건과 글 노출 매트릭스를 따른다. `POST /api/v1/posts/{id}/unlock`이 맞으면 해당 글 ID가 담긴 서명된 단기 쿠키(30분, HttpOnly)를 발급하고, 글 조회 시 이 쿠키가 있으면 본문 포함. SSR 첫 요청에서도 쿠키로 본문을 렌더링. 실패 횟수는 (postId, 방문자 키)로 Caffeine 10분 카운트.
 
 ## R19. 방문자 수 (FR-067)
-- **Decision**: 방문자 키 = 로그인 회원 ID 또는 front가 발급하는 익명 방문자 쿠키(UUID, 1년). 블로그 페이지 SSR 시 front가 backend에 방문 기록 API 호출. backend는 Caffeine(키: blogId+방문자키+날짜, TTL 하루)로 중복 제거 후 `blog_daily_visit(blog_id, visit_date, visitors)` upsert, 전체 수는 blogs.total_visitors 증가. 봇(User-Agent에 bot/crawler/spider)은 제외.
+- **Decision**: 방문자 키 = 로그인 회원 ID 또는 front가 발급하는 익명 방문자 쿠키(UUID, 1년). 블로그 페이지 SSR 시 front가 backend에 방문 기록 API 호출. backend는 Caffeine(키: blogId+방문자키+날짜, TTL 하루)로 중복 제거 후 `blog_daily_visits(blog_id, visit_date, visitors)` upsert(004 data-model), 전체 수는 blogs.total_visitors 증가. 봇(User-Agent에 bot/crawler/spider)은 제외.
 
 ## R20. 비회원 댓글·방명록, 비밀 댓글 (FR-065, FR-066, FR-056~058)
 - **Decision**: comments·guestbook_entries에 user_id NULL 허용, guest_name, guest_password_hash(BCrypt) 컬럼. 비회원 쓰기는 IP당 1분 5회 제한. 비밀 여부는 secret 컬럼, 조회 응답에서 권한 없는 사람에게는 content를 null로 내려보낸다(필터링은 서비스 계층 한 곳).
