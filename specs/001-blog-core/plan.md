@@ -78,7 +78,7 @@ blog-backend/                              # 저장소: blog-backend
 ├── pom.xml                                # groupId net.java21.blog, artifactId backend
 ├── src/main/java/net/java21/blog/backend/
 │   ├── BackendApplication.java
-│   ├── common/        # 에러 응답(code + fieldErrors[].code, message는 영어 디버그용), 예외 핸들러, 페이지 응답, 시간
+│   ├── common/        # 공통 응답 ApiResponse(header·result·totalCount, api-guidelines.md), 오류 코드, 예외 핸들러, 시간
 │   ├── security/      # SecurityConfig, JwtProvider, JwtAuthFilter, CurrentUser, Origin 검사 필터(예외 목록), 관리자 API 역할 DB 확인
 │   ├── crypto/        # AES-256-GCM AttributeConverter, HMAC 해시, 키 버전·재암호화 배치 (FR-134~136)
 │   ├── auth/          # 가입(약관 동의), 로그인, 리프레시, 로그아웃, 로그인 잠금, 비밀번호 재설정·변경, 로그인 기록

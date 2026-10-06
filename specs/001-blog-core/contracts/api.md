@@ -10,22 +10,23 @@
 
 ## 공통
 
-**페이지 응답**
-```json
-{ "items": [ ... ], "page": 0, "size": 20, "totalElements": 135, "totalPages": 7 }
-```
-`page`는 0부터, `size` 기본 20·최대 50.
+모든 응답은 [REST API 설계 규칙](../../../api-guidelines.md)의 공통 틀 `{ header, result, totalCount? }`로 감싼다. 아래 표의 "응답"은 `result`에 들어가는 내용만 적었다.
 
-**에러 응답**
-```json
-{ "code": "POST_NOT_FOUND", "message": "Post not found: 123", "fieldErrors": [ { "field": "title", "code": "REQUIRED" } ] }
-```
-- `code`: 언어와 무관한 고정 오류 코드. 한번 정한 코드는 바꾸지 않는다(FR-154).
-- `fieldErrors[].code`: 필드 검증 오류 코드(`REQUIRED`, `TOO_LONG`, `TOO_SHORT`, `INVALID_FORMAT`, `PASSWORD_WEAK` 등). 길이 제한 등 값이 필요하면 `params`(예: `{ "max": 200 }`)를 함께 준다.
-- `message`: 영어로 된 디버그용 설명. 로그·개발 도구용이며 front는 화면에 보여주지 않는다.
-- front는 `code`와 `fieldErrors[].code`를 메시지 키(`errors.{code}`, `fieldErrors.{code}`)로 바꿔 화면 언어로 보여준다(헌법 원칙 VII). 모르는 코드는 공통 오류 문구로 보여준다.
+- **목록(페이지)**: 표에 `{ items: [...] }` 페이지 응답으로 적은 것은 `result`가 배열, `totalCount`가 전체 개수다. `page`는 0부터, `size`는 기본 20·최대 50이다.
+- **목록(짧은 것)**: 페이지 없이 항상 전부 주는 목록도 `result`는 배열이다. `count`·`limit`·`portalCard`처럼 곁들이는 값이 있으면 `result`를 객체(`{ items, ... }`)로 둔다.
+- **본문 없는 성공**: 표의 "204"는 `200` + `result: null`이다(설계 규칙 4절).
+- **오류**: `header.isSuccessful=false`, `header.resultCode`=아래 오류 코드, `header.fieldErrors`=필드 검증 오류, `result: null`.
+  ```json
+  { "header": { "isSuccessful": false, "resultCode": "VALIDATION_FAILED", "resultMessage": "Validation failed",
+                "fieldErrors": [ { "field": "title", "code": "REQUIRED", "params": {} } ], "traceId": "4bf92f3577b34da6" },
+    "result": null }
+  ```
+- `resultCode`: 언어와 무관한 고정 오류 코드. 한번 정한 코드는 바꾸지 않는다(FR-154).
+- `fieldErrors[].code`: 필드 검증 오류 코드(`REQUIRED`, `TOO_LONG`, `TOO_SHORT`, `INVALID_FORMAT`, `PASSWORD_WEAK` 등). 길이 제한처럼 값이 필요하면 `params`(예: `{ "max": 200 }`)에 넣는다.
+- `resultMessage`: 영어로 된 디버그용 설명. 로그·개발 도구용이며 front는 화면에 보여주지 않는다.
+- front는 `resultCode`와 `fieldErrors[].code`를 메시지 키(`errors.{code}`, `fieldErrors.{code}`)로 바꿔 화면 언어로 보여준다(헌법 원칙 VII). 모르는 코드는 공통 오류 문구로 보여준다.
 
-| HTTP | code | 상황 |
+| HTTP | resultCode | 상황 |
 |---|---|---|
 | 400 | VALIDATION_FAILED | 입력 검증 실패(fieldErrors 포함) |
 | 401 | UNAUTHENTICATED | 로그인 필요, 접근 토큰 만료 |
@@ -108,7 +109,7 @@
 |---|---|---|---|---|
 | POST | /blogs/{handle}/posts/drafts | 주인 | DraftWrite | 201 `{ id, savedAt }` (이 블로그의 새 임시저장 글. 내 블로그가 아니면 403 `FORBIDDEN`, 삭제된 블로그는 404) |
 | PUT | /posts/{id}/draft | 주인 | DraftWrite | 200 `{ id, savedAt }` (자동저장·임시저장, 발행본에는 영향 없음) |
-| GET | /blogs/{handle}/posts/drafts/latest | 주인 | - | 200 `{ id, title, savedAt }` 또는 204 (이 블로그의 이어 쓰기 확인용) |
+| GET | /blogs/{handle}/posts/drafts/latest | 주인 | - | 200 `{ id, title, savedAt }` 또는 200 `null` (이 블로그의 이어 쓰기 확인용) |
 | GET | /posts/{id}/draft | 주인 | - | 200 `DraftWrite + { savedAt }` (작성 화면 불러오기. 작성 중 사본이 없으면 발행본 내용을 그대로 돌려줌) |
 | DELETE | /posts/{id}/draft | 주인 | - | 204 (작성 중 사본 폐기. 발행본은 그대로 두고, 사본에서만 참조하던 이미지는 정리 대상 판단. 발행 전 글(DRAFT)에는 이 API 대신 `DELETE /posts/{id}`를 쓰며, 호출하면 409 `POST_NOT_PUBLISHED`) |
 | POST | /posts/{id}/publish | 주인 | PublishSettings | 200 PostDetail (발행 설정 화면의 발행 버튼, 수정 발행 포함) |

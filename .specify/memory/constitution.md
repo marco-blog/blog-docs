@@ -9,7 +9,7 @@ Sync Impact Report (2026-10-06)
 - 2.2.0: 개인정보 AES-256-GCM 암호화(blog.crypto.*), 1.0 운영 범위(HTTPS·DB·백업·로그) 추가.
 - 2.3.0: 원칙 VII(다국어 우선, ko·en·ja·zh-CN) 추가, 저장소 README 4개 언어 규칙.
 - 2.3.1 (PATCH): 에디터 UI 문구를 화면 언어로, 첨부 파일 주소를 추측 불가 키(`/media/{key}`)로, 공개 범위 판단 기준을 001 data-model 노출 매트릭스로 명시, 전체 스펙 일관성 점검 반영.
-- 2.4.0: 스키마 관리를 Crowfoot ERD 문서로 일원화(Flyway 제거, 개발 DB는 Crowfoot ALTER로 반영), Repository 테스트는 Testcontainers 대신 전용 테스트 MySQL 스키마, backend 설정 프로필 local·prod·test 분리.
+- 2.4.0: 스키마 관리를 Crowfoot ERD 문서로 일원화(Flyway 제거, 개발 DB는 Crowfoot ALTER로 반영), Repository 테스트는 Testcontainers 대신 전용 테스트 MySQL 스키마, backend 설정 프로필 local·prod·test 분리, REST API 설계 규칙과 공통 응답 형식(api-guidelines.md).
 - 템플릿: 변경 없음. 후속 작업: 없음.
 -->
 
@@ -59,13 +59,14 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | front | React + Vite, React Router framework 모드(SSR 내장, Vite 플러그인 기반), TypeScript | 사용자 결정(2026-10-06 승인) |
 | DB | MySQL 8 (Crowfoot 발급: 개발 `cf_u2_d2`, 테스트 `cf_u2_d3`) | 사용자 결정 |
 | 스키마 관리 | Crowfoot ERD 문서 "blog 1.0"이 원천. 개발 DB 변경은 Crowfoot `plan_migration`→승인→`apply_migration`(ALTER)으로 반영하고 실행한 ALTER는 `blog-docs/db/migrations/`에 남긴다. Flyway 등 다른 마이그레이션 도구는 쓰지 않는다. Hibernate는 `ddl-auto=validate`. 절차는 `blog-docs/db/README.md` | 사용자 결정(2026-10-06) |
-| backend 설정 프로필 | `local`(기본, `application-local.yml`은 커밋 금지), `prod`(접속 정보는 환경 변수), `test`(테스트 DB) | 사용자 결정(2026-10-06) |
+| backend 설정 프로필 | `local`(기본, 비밀 값은 커밋하지 않는 `.env`에서 읽음), `prod`(접속 정보는 환경 변수), `test`(테스트 DB) | 사용자 결정(2026-10-06) |
 | 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
 | 서비스 도메인 | `blog.java21.net`. 블로그는 `blog.java21.net/{블로그주소}`, 글은 `blog.java21.net/{블로그주소}/{글번호}` | 사용자 결정 |
 | 글 에디터 | Milkdown Crepe (Markdown 저장, 입력 즉시 서식 렌더링, `/` 명령·플로팅 메뉴, 큰 툴바 없음). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정(2026-10-06 확정. TOAST UI 대체, CKEditor 스타일 배제). 상단 툴바(top-bar)와 AI 기능은 끔, UI 문구는 화면 언어(4개 언어)를 따름 |
 | 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB), `blog.media.thumbnail-dir`, `blog.media.thumbnail.sizes`(허용 썸네일 크기 목록). 이미지 주소는 순번 ID가 아닌 추측할 수 없는 무작위 키(`/media/{key}`, 썸네일 `/media/{key}/{w}x{h}`)를 쓰며 허용 목록 외 크기는 거부. 임시(TEMP) 이미지는 올린 사람에게만 제공. 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
 | 개인정보 암호화 | 개인정보 컬럼은 AES-256-GCM으로 암호화 저장, 조회 시 복호화(JPA AttributeConverter). 검색이 필요한 이메일은 HMAC 해시 컬럼 병행. 키는 프로퍼티 `blog.crypto.*`(환경 변수·외부 설정 파일로 주입, 저장소 커밋 금지), 키 버전으로 교체 지원 | 사용자 결정(암호화·프로퍼티 키), 해시 컬럼·GCM은 기본값 |
 | 다국어 | 지원 언어 ko(기준)·en(기본 대체)·ja·zh-CN. front는 react-i18next(기본값), 번역 파일 `blog-front/app/locales/{lang}/*.json`. backend 메일 문구는 Spring MessageSource `messages_{lang}.properties`. 주소에 언어 접두어를 넣지 않음(쿠키·회원 설정·Accept-Language) | 사용자 결정(4개 언어), 라이브러리·URL 방식은 기본값 |
+| API 설계 | RESTful(복수 명사 자원, HTTP 메서드·상태 코드 의미대로). 응답은 Dooray 방식 공통 틀 `{ header: { isSuccessful, resultCode, resultMessage }, result, totalCount }`, 상태 코드는 실제 값, `resultCode`는 문자열 오류 코드. 세부는 `blog-docs/api-guidelines.md` | 사용자 결정(2026-10-06) |
 | API 문서 | springdoc-openapi, front 타입은 OpenAPI에서 생성 | 기본값 |
 
 "기본값"으로 표시된 항목은 plan 단계에서 바꿀 수 있으며, 바꾸면 이 표를 개정한다.
