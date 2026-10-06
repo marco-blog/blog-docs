@@ -1,4 +1,4 @@
-# Specification Quality Checklist: 멀티 유저 블로그 플랫폼 MVP
+# Specification Quality Checklist: 트랙백과 운영 (신고·관리자·트랙백)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-06
@@ -31,5 +31,4 @@
 
 ## Notes
 
-- 확인 사항 모두 해소. FR-014는 2026-10-06 사용자 결정(Markdown 지원 TOAST UI Editor). FR-022는 2026-10-06 사용자 결정으로 해소(`blog.java21.net/{블로그주소}`). 답을 받으면 반영 후 `/speckit-clarify` 또는 `/speckit-plan`으로 진행.
-- 토큰 기반 인증은 사용자 결정이지만 스펙에서는 "접근 자격 / 로그인 연장 자격"으로 기술 중립적으로 표현함. 구체적 방식은 헌법과 plan.md에 둔다.
+- 2026-10-06 단일 MVP 스펙을 001~004로 분할. FR/SC 번호는 분할 전 번호 유지.

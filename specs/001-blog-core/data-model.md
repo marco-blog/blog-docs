@@ -24,9 +24,13 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 |---|---|---|
 | id | BIGINT | PK |
 | user_id | BIGINT | FK users |
+| family_id | CHAR(36) | 한 번의 로그인에서 이어진 토큰 묶음(UUID) |
 | token_hash | CHAR(64) | UNIQUE, SHA-256 |
-| expires_at | DATETIME(6) | 발급 + 4시간 |
-| revoked_at | DATETIME(6) | 로그아웃·정지·탈퇴 시 설정 |
+| expires_at | DATETIME(6) | 발급 + 4시간(유휴 만료) |
+| family_expires_at | DATETIME(6) | family 최초 발급 + 7일(절대 만료) |
+| used_at | DATETIME(6) | 교체되어 사용 처리된 시각 |
+| replaced_by_id | BIGINT | 교체로 새로 발급된 토큰 |
+| revoked_at | DATETIME(6) | 로그아웃·재사용 감지·정지·탈퇴 시 설정 |
 
 ## blogs
 | 컬럼 | 타입 | 제약 |
