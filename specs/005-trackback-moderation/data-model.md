@@ -1,6 +1,6 @@
 # Data Model: 005 트랙백과 운영
 
-> 이 문서는 [001 data-model](../001-blog-core/data-model.md)을 확장한다. DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, 공통 컬럼 `created_at`·`updated_at`, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스(이미 HIDDEN 행이 있음)는 001을 따른다. 이 스펙의 Flyway 마이그레이션은 아래 새 테이블과 001·004 테이블 변경을 더한다. 전체 테이블과 관계는 [erd.md](../../erd.md)에 모았다.
+> 이 문서는 [001 data-model](../001-blog-core/data-model.md)을 확장한다. DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, 공통 컬럼 `created_at`·`updated_at`, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스(이미 HIDDEN 행이 있음)는 001을 따른다. 이 스펙은 아래 새 테이블과 001·004 테이블 변경을 Crowfoot 문서에 더한다([db/README.md](../../db/README.md)). 전체 테이블과 관계는 [erd.md](../../erd.md)에 모았다.
 
 ## ERD
 

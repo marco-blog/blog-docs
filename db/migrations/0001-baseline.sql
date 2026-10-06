@@ -1,0 +1,8 @@
+-- 0001 baseline
+-- 날짜: 2026-10-06
+-- 대상: 개발 DB cf_u2_d2 (Crowfoot 커넥션 48)
+-- 문서: Crowfoot "blog 1.0" (documentId 646)
+-- 승인: marco
+--
+-- 첫 배포(deploy_document): 40개 테이블, 74개 외래 키, 173개 문장 실행, 실패 0.
+-- 실행된 DDL은 ../schema-mysql.sql 과 같다. 이후 변경은 0002부터 ALTER 문으로 남긴다.

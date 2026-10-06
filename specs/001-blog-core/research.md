@@ -96,7 +96,7 @@
 - **Decision**:
   - Controller: `@WebMvcTest` + MockMvc. 보안 필터를 포함해 401/403을 검증하고, 서비스는 `@MockitoBean`.
   - Service: `MockitoExtension` 단위 테스트.
-  - Repository: `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + Testcontainers MySQL(`@ServiceConnection`), 컨테이너는 정적 필드로 재사용. Flyway 마이그레이션을 그대로 적용해 FULLTEXT 쿼리도 검증.
+  - Repository: `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` + 전용 테스트 MySQL 스키마(`cf_u2_d3`, 환경 변수 `BLOG_TEST_DATASOURCE_*`). 합성 애너테이션 `@MySqlRepositoryTest`로 묶고, 변수가 없으면 건너뛴다. JVM당 한 번 `db/schema-mysql.sql` 스냅숏(Crowfoot export)으로 스키마를 다시 만든다. 스냅숏에 있는 테이블만 지우고, 개발 DB 스키마이거나 `BLOG_TEST_ALLOW_CLEAN=true`가 없으면 거부한다. 실제 MySQL이라 FULLTEXT(ngram) 쿼리도 검증된다. Testcontainers는 쓰지 않는다(사용자 결정).
   - JaCoCo `check` 규칙: BUNDLE LINE COVEREDRATIO ≥ 0.80, `verify` 단계에서 실행. 설정 클래스, `*Application`, DTO record는 제외.
   - front: Vitest `coverage.thresholds.lines = 80`, Playwright는 스토리별 Independent Test 시나리오.
 

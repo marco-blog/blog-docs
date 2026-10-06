@@ -1,6 +1,6 @@
 # Data Model: 003 포털
 
-> 이 문서는 [001 data-model](../001-blog-core/data-model.md)을 확장한다. DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, 공통 컬럼 `created_at`·`updated_at`, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스는 001을 따른다. 이 스펙의 Flyway 마이그레이션은 아래 새 테이블과 001 테이블 변경을 더한다. 전체 테이블과 관계는 [erd.md](../../erd.md)에 모았다.
+> 이 문서는 [001 data-model](../001-blog-core/data-model.md)을 확장한다. DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, 공통 컬럼 `created_at`·`updated_at`, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스는 001을 따른다. 이 스펙은 아래 새 테이블과 001 테이블 변경을 Crowfoot 문서에 더한다([db/README.md](../../db/README.md)). 전체 테이블과 관계는 [erd.md](../../erd.md)에 모았다.
 
 ## ERD
 
@@ -92,7 +92,7 @@ erDiagram
 | card_color | CHAR(7) | NULL 가능. 대표 이미지가 없는 글 카드의 기본 이미지 색(`#RRGGBB`). 소분류가 NULL이면 대분류 색 |
 
 - 인덱스: (parent_id, sort_order).
-- 삭제하지 않고 숨긴다(FR-079). 초기 목록(FR-075 표)은 Flyway 데이터 마이그레이션으로 넣으며, 4개 언어 이름을 모두 채워야 한다.
+- 삭제하지 않고 숨긴다(FR-079). 초기 목록(FR-075 표)은 backend 시작 시 초기화 코드가 없으면 넣는 방식(멱등)으로 넣으며, 4개 언어 이름을 모두 채워야 한다.
 - **운영자 숨김 vs 자동 숨김**: 운영자 숨김은 `admin_hidden`(저장값)이며 작성 화면·주제 탭·주제 페이지 모두에서 빠진다(주제 페이지 404). 자동 숨김(FR-147)은 저장하지 않는다. 최근 30일 포털 노출 글 수(내부 글 + 007 외부 글)를 주제별로 세어 기준(`portal.topic-auto-hide-threshold`) 미만이고 `pinned_on_tab = false`이면 주제 탭에서만 뺀다. 이 계산은 포털 목록과 같은 5분 캐시로 한다(FR-090).
 - 대분류의 글 수는 소속 소분류 글 수의 합이다. 대분류 페이지는 소속 소분류의 글을 모두 보여준다(FR-078).
 

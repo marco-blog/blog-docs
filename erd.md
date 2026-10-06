@@ -2,8 +2,8 @@
 
 001~007 스펙의 data-model을 한 곳에 모은 문서다. 기준은 각 스펙의 data-model.md이며, 이 문서의 테이블·컬럼 이름은 그 파일들과 같다. 스펙이 테이블이나 컬럼을 바꾸면 이 문서도 같은 PR에서 고친다.
 
-- DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, Flyway 마이그레이션, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스: [001 data-model](specs/001-blog-core/data-model.md)
-- MySQL DDL(Flyway V1 원본, Crowfoot ERD "blog 1.0"과 동일): [db/schema-mysql.sql](db/schema-mysql.sql). 테이블·컬럼을 바꾸면 이 파일도 같은 PR에서 고친다.
+- DB 공통 규칙(MySQL 8, utf8mb4, 시간은 UTC `DATETIME(6)`, PK `BIGINT AUTO_INCREMENT`, Crowfoot으로 스키마 관리, 개인정보 AES-256-GCM 암호화)과 글 노출 매트릭스: [001 data-model](specs/001-blog-core/data-model.md)
+- 스키마의 원천은 Crowfoot ERD 문서 "blog 1.0"이다. MySQL DDL 스냅숏은 [db/schema-mysql.sql](db/schema-mysql.sql)(Crowfoot export), 바꾸는 순서와 ALTER 기록은 [db/README.md](db/README.md)를 따른다.
 - 스펙별 문서: [001](specs/001-blog-core/data-model.md) · [002](specs/002-discovery-feeds/data-model.md) · [003](specs/003-portal/data-model.md) · [004](specs/004-blog-features/data-model.md) · [005](specs/005-trackback-moderation/data-model.md) · [006](specs/006-admin-consoles/data-model.md) · [007](specs/007-external-feeds/data-model.md)
 - 다이어그램에서 공통 컬럼(`created_at`, `updated_at`)은 기록 시각 자체가 의미 있는 테이블 외에는 생략했다. 점선 관계는 외래 키 없는 참조(다형 참조, 값 참조)다.
 

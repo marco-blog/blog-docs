@@ -17,13 +17,13 @@
 **Language/Version**: backend Java 21 / front TypeScript 5.x, Node.js 22 LTS
 
 **Primary Dependencies**:
-- backend: Spring Boot 4.1.x(Web MVC, Security, Data JPA, Validation, Mail), jjwt 0.13, Flyway, springdoc-openapi 3.x, commonmark-java, OWASP Java HTML Sanitizer, Caffeine, Thumbnailator + TwelveMonkeys ImageIO WebP(R11), Spring MessageSource(메일 문구, R22·R23)
+- backend: Spring Boot 4.1.x(Web MVC, Security, Data JPA, Validation, Mail), jjwt 0.13, springdoc-openapi 3.x, commonmark-java, OWASP Java HTML Sanitizer, Caffeine, Thumbnailator + TwelveMonkeys ImageIO WebP(R11), Spring MessageSource(메일 문구, R22·R23)
 - front: React 19, Vite 8, React Router 8 framework 모드(@react-router/dev, @react-router/express), Express 5, @milkdown/crepe 7.x(R7), openapi-typescript, i18next + react-i18next(R22), highlight.js(R24, 서버 렌더링 전용)
 
 **Storage**: MySQL 8(InnoDB, utf8mb4), 이미지·썸네일 파일은 로컬 디스크(저장소 인터페이스로 추상화). 검색용 FULLTEXT ngram 인덱스는 002에서 추가
 
 **Testing**:
-- backend: JUnit 5, Spring 슬라이스(`@WebMvcTest`, `@DataJpaTest`), Mockito, Testcontainers 2.x MySQL, JaCoCo(라인 80% 미만 시 `verify` 실패)
+- backend: JUnit 5, Spring 슬라이스(`@WebMvcTest`, `@DataJpaTest`), Mockito, 전용 테스트 MySQL 스키마(Testcontainers 사용 안 함), JaCoCo(라인 80% 미만 시 `verify` 실패)
 - front: Vitest 5 + Testing Library(coverage threshold 80%), Playwright E2E
 - 번역 누락 점검(SC-024): front 키 집합 비교 테스트(Vitest), backend `messages_*.properties` 키 비교 테스트(JUnit), R22
 
@@ -105,7 +105,7 @@ blog-backend/                              # 저장소: blog-backend
 └── src/test/java/net/java21/blog/backend/
     ├── {domain}/controller/*ControllerTest.java   # @WebMvcTest
     ├── {domain}/service/*ServiceTest.java         # Mockito 단위
-    ├── {domain}/repository/*RepositoryTest.java   # @DataJpaTest + Testcontainers
+    ├── {domain}/repository/*RepositoryTest.java   # @DataJpaTest + 테스트 MySQL 스키마(@MySqlRepositoryTest)
     └── support/                                   # 테스트 픽스처, 컨테이너 설정
 
 blog-front/                                # 저장소: blog-front
@@ -136,7 +136,7 @@ blog-front/                                # 저장소: blog-front
 
 | 단계 | 스토리 | 핵심 산출물 | FR |
 |---|---|---|---|
-| 0 | 기반 | 두 앱 뼈대, Flyway V1, 보안 설정(Origin 검사·예외 목록), 에러 응답 형식, 개인정보 암호화 컨버터, i18n 기반(react-i18next·locales·MessageSource·번역 누락 테스트), SSR 서버와 프록시, 정기 작업 설정, 커버리지 게이트, CI | FR-134~136, FR-148, FR-152, FR-154 |
+| 0 | 기반 | 두 앱 뼈대, 설정 프로필(local·prod·test)과 테스트 DB 스키마 준비, 보안 설정(Origin 검사·예외 목록), 에러 응답 형식, 개인정보 암호화 컨버터, i18n 기반(react-i18next·locales·MessageSource·번역 누락 테스트), SSR 서버와 프록시, 정기 작업 설정, 커버리지 게이트, CI | FR-134~136, FR-148, FR-152, FR-154 |
 | 1 | US1 가입·글쓰기 (P1) | auth(가입·약관 동의·로그인·리프레시·잠금·로그아웃), user, blog(내 블로그 목록·만들기·삭제, `/settings/blogs`), post(작성 중 사본·완료·발행 설정·수정 발행), content(변환·살균·동영상 iframe), 코드 강조, 블로그 홈/글 상세 SSR, 에디터 래퍼, 휴지통·복구·영구 삭제 작업 | FR-001~007, FR-010~022, FR-036, FR-070, FR-081, FR-083, FR-084, FR-107, FR-108, FR-140, FR-158, FR-159 |
 | 1a | US1 계정 설정 | 비밀번호 변경·재설정(메일), 로그인 기록, 프로필·탈퇴, 개인정보 파기 작업, 약관·개인정보처리방침 페이지 | FR-008, FR-009, FR-082, FR-133, FR-137~139 |
 | 1b | 006 블로그 관리 뼈대 | `/:handle/manage` 레이아웃·좌측 메뉴·블로그 전환, `/manage`·`/write` 리다이렉트, 대시보드(글·댓글 수치만, 방문자는 004), 글 관리(필터·검색·일괄 작업·휴지통), 블로그 설정, noindex | 006 FR-096~101(001 범위) |
