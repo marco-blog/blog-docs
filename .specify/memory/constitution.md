@@ -48,7 +48,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
 | 서비스 도메인 | `blog.java21.net`. 블로그는 `blog.java21.net/{블로그주소}`, 글은 `blog.java21.net/{블로그주소}/{글번호}` | 사용자 결정 |
 | 글 에디터 | Milkdown Crepe (Markdown 저장, 입력 즉시 서식 렌더링, `/` 명령·플로팅 메뉴, 큰 툴바 없음). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정(2026-10-06 확정. TOAST UI 대체, CKEditor 스타일 배제). 상단 툴바(top-bar)와 AI 기능은 끔, UI 문구는 한국어로 설정 |
-| 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB). 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
+| 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB), `blog.media.thumbnail-dir`, `blog.media.thumbnail.sizes`(허용 썸네일 크기 목록). 썸네일 URL은 `/media/{id}/{w}x{h}`이며 허용 목록 외 크기는 거부. 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
 | API 문서 | springdoc-openapi, front 타입은 OpenAPI에서 생성 | 기본값 |
 
 "기본값"으로 표시된 항목은 plan 단계에서 바꿀 수 있으며, 바꾸면 이 표를 개정한다.

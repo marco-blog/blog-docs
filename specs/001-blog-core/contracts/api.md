@@ -162,7 +162,14 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
 | POST | /media | 로그인 | `multipart/form-data` file | 201 `{ id, url: "/media/{id}", mime, size }` (status=TEMP) |
-| GET | /media/{id} *(접두어 /api/v1 없음)* | 모두 | - | 200 이미지 바이트, `Cache-Control: public, max-age=31536000, immutable` / 정리된 경우 404 |
+| GET | /media/{id} *(접두어 /api/v1 없음)* | 모두 | - | 200 원본 이미지, `Cache-Control: public, max-age=31536000, immutable` / 정리된 경우 404 |
+| GET | /media/{id}/{w}x{h}?fit=cover\|contain | 모두 | - | 200 썸네일(첫 요청 시 생성 후 저장), 허용 목록에 없는 크기면 400 `THUMBNAIL_SIZE_NOT_ALLOWED` |
+
+썸네일 규칙 (FR-130~132):
+- 허용 크기는 `blog.media.thumbnail.sizes` 프로퍼티. `fit` 기본값 `cover`.
+- 저장 위치는 `blog.media.thumbnail-dir/{id}/{w}x{h}-{fit}.{ext}`. 원본 삭제 시 `{id}` 디렉터리 통째로 삭제.
+- 원본보다 큰 요청은 원본 크기를 넘지 않게 축소만 한다. 출력 형식은 원본과 같게(webp 출력 여부는 plan에서 결정).
+- 화면별 사용 크기: 글 카드 300x200·600x400, 프로필 50x50·100x100, 공유 미리보기 1200x630.
 
 ## 프로퍼티 (backend `application.yml`)
 
@@ -182,3 +189,5 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 | blog.media.temp-quota | 200MB | 회원별 임시 합계 한도 |
 | blog.media.max-size | 10MB | 파일당 최대 크기 |
 | blog.media.cleanup-cron | `0 0 * * * *` | 정리 작업 주기 |
+| blog.media.thumbnail-dir | (필수) | 썸네일 저장 디렉터리 |
+| blog.media.thumbnail.sizes | 50x50,100x100,160x160,300x200,600x400,1200x630 + 각 2배 | 허용 썸네일 크기 |
