@@ -23,7 +23,7 @@
 **Storage**: MySQL 8(InnoDB, utf8mb4), 이미지·썸네일 파일은 로컬 디스크(저장소 인터페이스로 추상화). 검색용 FULLTEXT ngram 인덱스는 002에서 추가
 
 **Testing**:
-- backend: JUnit 5, Spring 슬라이스(`@WebMvcTest`, `@DataJpaTest`), Mockito, 전용 테스트 MySQL 스키마(Testcontainers 사용 안 함), JaCoCo(라인 80% 미만 시 `verify` 실패)
+- backend: JUnit 5, Spring 슬라이스(`@WebMvcTest`, `@DataJpaTest`), Mockito, H2(Repository 테스트)와 전용 테스트 MySQL 스키마(FULLTEXT 등 MySQL 전용 쿼리만, Testcontainers 사용 안 함), QueryDSL(OpenFeign 7.x), JaCoCo(라인 80% 미만 시 `verify` 실패)
 - front: Vitest 5 + Testing Library(coverage threshold 80%), Playwright E2E
 - 번역 누락 점검(SC-024): front 키 집합 비교 테스트(Vitest), backend `messages_*.properties` 키 비교 테스트(JUnit), R22
 
@@ -105,7 +105,7 @@ blog-backend/                              # 저장소: blog-backend
 └── src/test/java/net/java21/blog/backend/
     ├── {domain}/controller/*ControllerTest.java   # @WebMvcTest
     ├── {domain}/service/*ServiceTest.java         # Mockito 단위
-    ├── {domain}/repository/*RepositoryTest.java   # @DataJpaTest + 테스트 MySQL 스키마(@MySqlRepositoryTest)
+    ├── {domain}/repository/*RepositoryTest.java   # @DataJpaTest + H2, 쿼리 수 확인(MySQL 전용 쿼리는 @MySqlRepositoryTest)
     └── support/                                   # 테스트 픽스처, 컨테이너 설정
 
 blog-front/                                # 저장소: blog-front
