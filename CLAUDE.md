@@ -7,7 +7,7 @@
 blog/
 ├── docs/      ← 이 저장소: 헌법, 스펙, 계획, 작업 목록
 ├── backend/   ← Spring Boot (Java 21, Maven, JPA)
-└── front/     ← React SSR (Next.js)
+└── front/     ← React SSR (Vite + React)
 ```
 구현할 때는 이 디렉터리에서 `claude --add-dir ../backend ../front`로 실행한다.
 
