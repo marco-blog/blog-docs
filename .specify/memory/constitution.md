@@ -34,7 +34,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. backend는 �
 | backend 빌드 | Maven | 사용자 결정 |
 | backend 프레임워크 | Spring Boot 3.x, Spring Web, Spring Security | 사용자 결정(Spring) |
 | 영속성 | Spring Data JPA | 사용자 결정 |
-| 인증 | 토큰 기반(JWT Access Token + Refresh Token) | 사용자 결정(토큰), JWT는 기본값 |
+| 인증 | 토큰 기반(JWT). Access Token 유효기간 30분, Refresh Token 유효기간 4시간 | 사용자 결정(토큰, 유효기간), JWT 형식은 기본값 |
 | front | React SSR, Next.js(App Router) + TypeScript | React SSR은 사용자 결정, Next.js는 기본값 |
 | DB | MySQL 8 | 기본값(미확정) |
 | 스키마 마이그레이션 | Flyway | 기본값 |
