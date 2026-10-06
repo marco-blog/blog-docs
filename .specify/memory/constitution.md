@@ -35,7 +35,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. backend는 �
 | backend 프레임워크 | Spring Boot 4.x, Spring Web, Spring Security | 사용자 결정(Spring Boot 4) |
 | 영속성 | Spring Data JPA | 사용자 결정 |
 | 인증 | 토큰 기반(JWT). Access Token 유효기간 30분, Refresh Token 유효기간 4시간 | 사용자 결정(토큰, 유효기간), JWT 형식은 기본값 |
-| front | React + Vite, SSR은 Vite SSR(Node Express 서버, React `renderToPipeableStream`), 라우팅은 React Router, TypeScript | React·Vite·SSR은 사용자 결정, Express·React Router·TypeScript는 기본값 |
+| front | React + Vite, SSR은 Vite SSR(Node Express 서버, React `renderToPipeableStream`), 라우팅은 React Router, TypeScript | 사용자 결정(2026-10-06 확정) |
 | DB | MySQL 8 | 기본값(미확정) |
 | 스키마 마이그레이션 | Flyway | 기본값 |
 | 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
