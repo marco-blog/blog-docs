@@ -47,6 +47,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | 스키마 마이그레이션 | Flyway | 기본값 |
 | 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
 | 서비스 도메인 | `blog.java21.net`. 블로그는 `blog.java21.net/{블로그주소}`, 글은 `blog.java21.net/{블로그주소}/{글번호}` | 사용자 결정 |
+| 글 에디터 | TOAST UI Editor (Markdown 저장, Markdown/WYSIWYG 모드 전환). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정 |
 | API 문서 | springdoc-openapi, front 타입은 OpenAPI에서 생성 | 기본값 |
 
 "기본값"으로 표시된 항목은 plan 단계에서 바꿀 수 있으며, 바꾸면 이 표를 개정한다.
@@ -61,4 +62,4 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 
 이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VI을 확인한다.
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 1.5.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
