@@ -1,6 +1,6 @@
 # Research: 001 블로그 핵심
 
-> R15~R21은 002·004·005 스펙용으로(R15·R21은 002, R17~R20은 004, R16은 005) 미리 조사한 내용이다. R9(검색, 002 FR-035)와 R10의 인기 글 부분(003 FR-034·086)도 해당 스펙의 결정이다. 이들은 해당 스펙의 `/speckit-plan` 때 그 스펙의 research.md로 옮긴다. R22~R26은 001의 결정이다.
+> R15~R21은 002·004·005 스펙용으로(R15·R21은 002, R17~R20은 004, R16은 005) 미리 조사한 내용이다. R9(검색, 002 FR-035)와 R10의 인기 글 부분(003 FR-034·086)도 해당 스펙의 결정이다. 이들은 해당 스펙의 `/speckit-plan` 때 그 스펙의 research.md로 옮긴다. R22~R28은 001의 결정이다.
 >
 > 모든 API 경로는 `/api/v1` 접두어를 쓴다(contracts/api.md).
 
@@ -158,7 +158,7 @@
 ## R26. 정기 작업 (FR-072~073, FR-084, FR-138, FR-139)
 - **Decision**: Spring `@Scheduled`(`@EnableScheduling`). 1.0은 backend 1대 전제라 분산 락을 두지 않는다(서버가 늘면 ShedLock 검토, R17과 같은 방침). 작업 목록:
   - 이미지 정리(`blog.media.cleanup-cron`, 매시): 만료된 TEMP, ORPHANED 삭제(R11).
-  - 휴지통 비우기(`blog.jobs.trash-purge-cron`, 매일): `deleted_at < now - 30일`인 글 영구 삭제 → post_media 삭제 → 이미지 정리 대상 판단.
+  - 휴지통 비우기(`blog.jobs.trash-purge-cron`, 매일): `deleted_at < now - 30일`인 글 영구 삭제 → post_media 삭제 → 이미지 정리 대상 판단. 같은 작업이 `deleted_at < now - 30일`인 삭제된 블로그(FR-159)의 카테고리·블로그별 데이터를 지우고 대표 이미지 정리 대상을 판단한다(`blogs` 행은 주소 재사용 방지를 위해 남김).
   - 개인정보 파기(`blog.jobs.privacy-purge-cron`, 매일): `withdrawn_at < now - 30일`인 회원의 개인정보 파기, 90일 지난 로그인 기록 삭제, 만료된 비밀번호 재설정 토큰·리프레시 토큰 삭제.
   - 각 작업은 한 번에 정해진 건수씩 나눠 처리하고 결과 건수를 로그에 남긴다.
 - **Alternatives**: Quartz(DB 테이블 추가, 지금 필요 없음), 외부 cron(실행 파트 밖 설정이 늘어남).
@@ -174,3 +174,9 @@
 - **CSRF**: R3(SameSite=Lax 쿠키 + 상태 변경 요청의 `Origin` 검사)로 막는다. 쿠키 인증이라 토큰을 JS에서 읽을 수 없으므로(HttpOnly) XSS가 생겨도 토큰 자체는 빼낼 수 없다.
 - **검증**: 통합 테스트로 악성 본문(`<script>`, `<img onerror>`, `javascript:` 링크, 허용 목록 밖 iframe, SVG 업로드)이 저장 후 무력화되는지, HTML 응답에 CSP 헤더가 있는지 확인한다.
 - **Alternatives**: 클라이언트 쪽 DOMPurify만 사용(SSR, RSS, 포털 요약에 같은 HTML이 쓰이므로 서버에서 한 번 정리하는 편이 안전), Spring Security 헤더만 사용(HTML은 front가 내려주므로 front에서 붙여야 함).
+
+## R28. 회원당 여러 블로그와 블로그 수 한도 (FR-010, FR-158, FR-159, 006 FR-160)
+- **Decision**: 회원 1 : 블로그 N. `blogs.user_id`의 UNIQUE를 없애고 인덱스만 둔다. handle은 `blogs`에 그대로 두며 삭제된 블로그를 포함해 서비스 전체에서 유일하다(삭제 후에도 행을 남겨 재사용을 막음, 사칭 방지). 한도는 `COALESCE(users.max_blogs, blog.blogs.default-max-per-member)`(기본 3)이고, 블로그 만들기와 삭제는 한 트랜잭션 안에서 `users` 행을 `SELECT ... FOR UPDATE`로 잠근 뒤 ACTIVE 블로그 수를 세고 INSERT(또는 status 변경)한다. 같은 회원의 동시 요청은 이 잠금에서 줄을 서므로 한도를 넘거나 마지막 블로그를 지우는 경우가 생기지 않는다. 다른 회원의 요청은 서로 막지 않는다.
+- **블로그 단위 주소**: 블로그별 소유자 화면은 `/:handle/manage/**`, `/:handle/write`로 옮기고 API도 `/blogs/{handle}/...`로 대상 블로그를 정한다. 주소만 보고 어느 블로그를 다루는지 알 수 있어 "현재 선택한 블로그" 같은 서버 상태가 필요 없다. 최상위 `/manage`·`/write`는 front 쿠키 `last_blog`(최근에 쓴 블로그)로 리다이렉트만 한다.
+- **Rationale**: 회원 행 잠금은 MySQL InnoDB 기본 기능만 쓰고, 잠금 범위가 그 회원 한 명이며 블로그 만들기는 드물어 경합이 없다. 회원 단위 한도를 DB 제약으로 표현할 수 없으므로 서비스 계층에서 직렬화한다.
+- **Alternatives**: 낙관적 검사(COUNT 후 INSERT, 잠금 없음: 동시 요청 두 개가 모두 통과해 한도를 넘음), 블로그 번호 슬롯 컬럼 + UNIQUE(user_id, slot)(한도가 바뀌면 슬롯 재배치가 필요하고 삭제 후 빈 슬롯 처리 복잡), `users.blog_count` 카운터 컬럼(잠금은 여전히 필요하고 값이 어긋날 위험만 늘어남), 현재 블로그를 세션·회원 컬럼에 저장(탭마다 다른 블로그를 다룰 때 꼬임).

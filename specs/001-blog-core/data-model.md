@@ -8,7 +8,7 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 
 ```mermaid
 erDiagram
-    USERS ||--|| BLOGS : "owns"
+    USERS ||--o{ BLOGS : "owns"
     USERS ||--o{ REFRESH_TOKENS : "has"
     USERS ||--o{ LOGIN_HISTORY : "has"
     USERS ||--o{ PASSWORD_RESET_TOKENS : "has"
@@ -45,6 +45,7 @@ erDiagram
         datetime withdrawn_at
         varchar terms_version
         datetime terms_agreed_at
+        int max_blogs
     }
     REFRESH_TOKENS {
         bigint id PK
@@ -74,12 +75,14 @@ erDiagram
     }
     BLOGS {
         bigint id PK
-        bigint user_id FK,UK
+        bigint user_id FK
         varchar handle UK
         varchar title
         varchar description
         bigint cover_media_id FK
         boolean comment_enabled
+        varchar status
+        datetime deleted_at
     }
     CATEGORIES {
         bigint id PK
@@ -170,8 +173,9 @@ erDiagram
 | withdrawn_at | DATETIME(6) | 탈퇴 시각, 이로부터 30일 후 개인정보 파기 (FR-138) |
 | terms_version | VARCHAR(20) | 동의한 약관 버전 (FR-081). 4개 언어 공통 하나의 버전, 기준은 한국어판 (FR-155) |
 | terms_agreed_at | DATETIME(6) | 동의 일시 |
+| max_blogs | INT | 회원별 블로그 한도, NULL=기본값(`blog.blogs.default-max-per-member`, 기본 3) 사용. 0 이상. 관리자만 바꾼다 (FR-158, 006 FR-160) |
 
-상태 전이: ACTIVE ↔ SUSPENDED(관리자), ACTIVE → WITHDRAWN(본인, 되돌릴 수 없음, 복구 기능 없음). WITHDRAWN 전이 시 그 회원의 모든 글 visibility=PRIVATE(이전 값은 보관하지 않음), 모든 리프레시 토큰 무효화(FR-009). 30일(보존 기간) 뒤 파기 작업이 email_enc·nickname·bio 등 개인정보를 지우거나 익명 값으로 바꾼다(FR-138). 007에서는 이때 그 회원의 외부 블로그 등록도 수집을 멈추고 수집된 글을 포털에서 내린다(007 FR-157).
+상태 전이: ACTIVE ↔ SUSPENDED(관리자), ACTIVE → WITHDRAWN(본인, 되돌릴 수 없음, 복구 기능 없음). WITHDRAWN 전이 시 그 회원의 모든 블로그의 모든 글 visibility=PRIVATE(이전 값은 보관하지 않음), 모든 리프레시 토큰 무효화(FR-009). 30일(보존 기간) 뒤 파기 작업이 email_enc·nickname·bio 등 개인정보를 지우거나 익명 값으로 바꾼다(FR-138). 007에서는 이때 그 회원의 외부 블로그 등록도 수집을 멈추고 수집된 글을 포털에서 내린다(007 FR-157).
 
 ## refresh_tokens
 | 컬럼 | 타입 | 제약 |
@@ -190,12 +194,20 @@ erDiagram
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | id | BIGINT | PK |
-| user_id | BIGINT | FK users, UNIQUE (FR-010) |
-| handle | VARCHAR(20) | UNIQUE, 규칙·예약어 검사, 변경 불가 (FR-002) |
+| user_id | BIGINT | FK users, 인덱스. 한 회원이 여러 블로그를 가짐 (FR-010) |
+| handle | VARCHAR(20) | UNIQUE(삭제된 블로그 포함), 규칙·예약어 검사, 변경 불가 (FR-002). 삭제된 블로그의 주소도 다시 쓸 수 없음 (FR-159) |
 | title | VARCHAR(100) | 기본값 "{닉네임}의 블로그" |
 | description | VARCHAR(500) | |
 | cover_media_id | BIGINT | FK media(owner_type=BLOG_COVER), NULL 가능. 응답의 `coverImageUrl`은 `/media/{media_key}` |
 | comment_enabled | BOOLEAN | 기본 true (FR-029) |
+| status | VARCHAR(10) | ACTIVE / DELETED (FR-159) |
+| deleted_at | DATETIME(6) | 블로그 삭제 시각 |
+
+인덱스: (user_id, status) 회원의 블로그 목록·한도 계산용.
+
+- **만들기 (FR-158)**: 가입 시 첫 블로그를 같은 트랜잭션에서 만든다. 그 뒤의 블로그는 한 트랜잭션에서 `SELECT ... FROM users WHERE id = ? FOR UPDATE`로 회원 행을 잠그고, `status = ACTIVE`인 블로그 수가 `COALESCE(users.max_blogs, blog.blogs.default-max-per-member)` 이상이면 거부(`BLOG_LIMIT_EXCEEDED`), 아니면 INSERT한다. 같은 회원의 동시 요청은 이 잠금에서 차례로 처리되므로 한도를 넘지 않는다(research R28). handle 중복은 UNIQUE 제약이 최종 판단한다. 한도가 지금 블로그 수보다 낮아져도 기존 행은 건드리지 않는다.
+- **삭제 (FR-159)**: 같은 회원 행 잠금 안에서 ACTIVE 블로그가 2개 이상일 때만 `status = DELETED`, `deleted_at` 설정(아니면 `LAST_BLOG_CANNOT_BE_DELETED`). 그 블로그의 DELETED가 아닌 글은 모두 휴지통 규칙대로 `status = DELETED`, `status_before_delete`, `deleted_at = 지금`으로 바꾼다(복구 화면은 없음). 삭제 즉시 블로그 홈·글 상세·피드 등은 404이고, 30일 뒤 휴지통 비우기 작업이 글을 영구 삭제하면서 카테고리·대표 이미지 참조와 002~005가 더하는 블로그별 데이터(구독·방명록·방문자 통계·설정 등)도 지운다. `blogs` 행은 주소를 다시 쓰지 못하게 남겨 두며(title·description은 비움), 되돌릴 수 없다.
+- **탈퇴**: 회원의 모든 블로그에 users 상태 전이 규칙이 적용된다(블로그 status는 바꾸지 않음).
 
 ## categories
 | 컬럼 | 타입 | 제약 |
@@ -241,7 +253,7 @@ erDiagram
 
 ### 글 노출 매트릭스 (기준표)
 
-모든 스펙의 글 노출 규칙은 이 표를 기준으로 한다(001 FR-018, 002 FR-047, 003 FR-088, 004 FR-062·064, 005 FR-041, SC-004). 다른 스펙은 규칙을 다시 쓰지 않고 이 표를 참조하며, 새 상태나 공개 범위를 추가하는 스펙은 이 표에 행을 더한다. "주인 외"는 글 주인이 아닌 모든 사람(비로그인 포함, 관리자 포함)이다. 글 주인은 자기 글을 상태와 관계없이 블로그 관리(`/manage/posts`)와 글 상세에서 볼 수 있다(DELETED는 휴지통에서만).
+모든 스펙의 글 노출 규칙은 이 표를 기준으로 한다(001 FR-018, 002 FR-047, 003 FR-088, 004 FR-062·064, 005 FR-041, SC-004). 다른 스펙은 규칙을 다시 쓰지 않고 이 표를 참조하며, 새 상태나 공개 범위를 추가하는 스펙은 이 표에 행을 더한다. "주인 외"는 글 주인이 아닌 모든 사람(비로그인 포함, 관리자 포함)이다. 글 주인은 자기 글을 상태와 관계없이 블로그 관리(`/:handle/manage/posts`)와 글 상세에서 볼 수 있다(DELETED는 휴지통에서만).
 
 | 상태 | 공개 범위 | 작성자 상태 | 상세(주인 외) | 블로그 목록 (홈·카테고리·태그·보관함·구독 피드·관련 글) | 피드 (RSS·Atom) | 검색 | 사이트맵 | 포털 (003) |
 |---|---|---|---|---|---|---|---|---|
@@ -256,6 +268,7 @@ erDiagram
 | 모두 | 모두 | WITHDRAWN | 404 (탈퇴 시 모든 글 PRIVATE) | 제외 | 제외 | 제외 | 제외 | 제외 |
 
 - 포털 제외(003 FR-093)와 블로그의 포털 노출 끄기(003 FR-089)는 포털 열에만 영향을 준다.
+- 삭제된 블로그(FR-159)의 글은 블로그를 삭제할 때 모두 DELETED가 되므로 DELETED 행을 따른다.
 - 외부 블로그 글(007)은 이 표의 대상이 아니며 포털에만 나온다(007 FR-123~125).
 - 상세가 404인 경우 응답은 "존재하지 않는 글"과 구분되지 않아야 한다.
 

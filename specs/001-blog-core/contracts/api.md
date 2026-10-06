@@ -38,8 +38,10 @@
 | 400 | THUMBNAIL_SIZE_NOT_ALLOWED | 허용 목록에 없는 썸네일 크기 (FR-131) |
 | 400 | PASSWORD_RESET_TOKEN_INVALID | 재설정 링크 만료·사용됨·없음 (FR-133) |
 | 400 | CURRENT_PASSWORD_MISMATCH | 비밀번호 변경 시 현재 비밀번호 불일치 (FR-082) |
-| 409 | EMAIL_TAKEN / HANDLE_TAKEN | 가입 중복 |
+| 409 | EMAIL_TAKEN / HANDLE_TAKEN | 가입·블로그 만들기 중복(삭제된 블로그의 주소 포함, FR-159) |
 | 409 | CATEGORY_NAME_TAKEN | 같은 부모 아래 이름 중복 |
+| 409 | BLOG_LIMIT_EXCEEDED | 가진 블로그(삭제 제외) 수가 회원의 블로그 한도 이상 (FR-158) |
+| 409 | LAST_BLOG_CANNOT_BE_DELETED | 마지막 남은 블로그 삭제 시도 (FR-159) |
 | 413 | MEDIA_TOO_LARGE | max-size 초과 |
 | 415 | MEDIA_TYPE_NOT_ALLOWED | 허용 형식 아님(내용 기준) |
 | 422 | HANDLE_RESERVED / HANDLE_INVALID | 블로그 주소 규칙 위반 |
@@ -56,8 +58,8 @@
 | 메서드 | 경로 | 권한 | 요청 | 성공 응답 |
 |---|---|---|---|---|
 | POST | /auth/signup | 비로그인 | `{ email, password, nickname, handle, agreeTerms, agreePrivacy, over14, termsVersion, locale?, timeZone? }` | 201 `{ userId, handle }` + 두 쿠키 설정(가입 즉시 로그인). `termsVersion`이 현재 버전과 다르면 422 `TERMS_VERSION_OUTDATED`. `locale`·`timeZone`은 가입 화면의 현재 언어·브라우저 시간대 |
-| GET | /auth/handle-availability?handle= | 모두 | - | 200 `{ available: true }` 또는 `{ available: false, reason: "TAKEN" \| "RESERVED" \| "INVALID" }` |
-| POST | /auth/login | 비로그인 | `{ email, password }` | 200 `{ userId, handle, nickname, role }` + 두 쿠키 설정 |
+| GET | /auth/handle-availability?handle= | 모두 | - | 200 `{ available: true }` 또는 `{ available: false, reason: "TAKEN" \| "RESERVED" \| "INVALID" }` (가입과 새 블로그 만들기에 같이 씀. 삭제된 블로그의 주소는 TAKEN) |
+| POST | /auth/login | 비로그인 | `{ email, password }` | 200 `{ userId, nickname, role, blogs: [{ handle, title }] }` + 두 쿠키 설정 (`blogs`는 삭제하지 않은 내 블로그, 만든 순) |
 | POST | /auth/refresh | refresh 쿠키 | - | 204 + 새 access·refresh 쿠키 (회전) |
 | POST | /auth/logout | 로그인 | - | 204 + 쿠키 삭제, family 폐기 |
 | POST | /auth/password-reset/request | 비로그인 | `{ email }` | 202 (가입 여부와 관계없이 같은 응답). 메일은 회원의 `locale` 언어로 발송(FR-148) |
@@ -69,22 +71,27 @@
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
-| GET | /me | 로그인 | - | 200 `{ userId, email, nickname, bio, profileImageUrl, role, locale, timeZone, blog: { handle, title } }` |
+| GET | /me | 로그인 | - | 200 `{ userId, email, nickname, bio, profileImageUrl, role, locale, timeZone, blogs: [{ handle, title }] }` (`blogs`는 삭제하지 않은 내 블로그, 만든 순) |
 | PATCH | /me | 로그인 | `{ nickname?, bio?, profileImageMediaKey?, locale?, timeZone? }` | 200 위와 같음. 프로필 이미지는 `purpose=PROFILE`로 올린 본인 이미지만, 저장 시 ATTACHED. `locale`은 ko·en·ja·zh-CN, `timeZone`은 IANA ID |
-| DELETE | /me | 로그인 | `{ password }` | 204, 되돌릴 수 없음. 글 전부 비공개, 모든 토큰 폐기, 30일 보존 기간 후 개인정보 파기(복구 기능 없음) |
+| DELETE | /me | 로그인 | `{ password }` | 204, 되돌릴 수 없음. 모든 블로그의 글 전부 비공개, 모든 토큰 폐기, 30일 보존 기간 후 개인정보 파기(복구 기능 없음) |
 | PUT | /me/password | 로그인 | `{ currentPassword, newPassword }` | 204, 현재 기기 외 모든 family 폐기 |
 | GET | /me/login-history?page= | 로그인 | - | 200 Page<`{ at, success, ipMasked, device }`> (IP는 일부 가림, 예: 211.234.*.*) |
 
-## 블로그 (blog) — FR-010~012
+## 블로그 (blog) — FR-010~012, FR-158, FR-159
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
+| GET | /me/blogs | 로그인 | - | 200 `{ items: [{ handle, title, coverImageUrl, postCount, createdAt }], count, limit }` (삭제하지 않은 내 블로그, 만든 순. `limit`은 회원별 한도 또는 기본값) |
+| POST | /blogs | 로그인 | `{ handle, title }` | 201 `{ handle, title, ... }`(GET /blogs/{handle}과 같음). handle 규칙·예약어(422 `HANDLE_INVALID`/`HANDLE_RESERVED`), 중복(409 `HANDLE_TAKEN`), 한도(409 `BLOG_LIMIT_EXCEEDED`)를 검사. `title`은 1~100자, 생략하면 "{닉네임}의 블로그" |
+| DELETE | /blogs/{handle} | 주인 | `{ password }` | 204, 되돌릴 수 없음. 마지막 남은 블로그면 409 `LAST_BLOG_CANNOT_BE_DELETED`, 비밀번호가 틀리면 400 `CURRENT_PASSWORD_MISMATCH`. 블로그 status=DELETED, 글은 휴지통 규칙대로 30일 뒤 영구 삭제(data-model blogs) |
 | GET | /blogs/{handle} | 모두 | - | 200 `{ handle, title, description, coverImageUrl, commentEnabled, owner: { nickname, profileImageUrl, bio }, categories: [CategoryNode] }` |
 | PATCH | /blogs/{handle} | 주인 | `{ title?, description?, coverImageMediaKey?, commentEnabled? }` | 200 위와 같음. 대표 이미지는 `purpose=BLOG_COVER`로 올린 본인 이미지만, 저장 시 ATTACHED |
 | GET | /blogs/{handle}/posts?category=&tag=&page= | 모두 | - | 200 Page<PostSummary> ("목록 노출 가능" 글만, 주인이 요청해도 같음. 보호 글은 제목만, data-model 글 노출 매트릭스) |
 | GET | /blogs/{handle}/manage/posts?status=&visibility=&category=&q=&page= | 주인 | - | 200 Page<PostSummary> (블로그 관리 글 목록). `status`: DRAFT / PUBLISHED / DELETED(휴지통, 30일 내 글과 `purgeAt` 포함), 004·005 이후 SCHEDULED / HIDDEN. `visibility`: PUBLIC / PRIVATE, 004 이후 PROTECTED. 생략하면 휴지통을 뺀 전체 |
 
-정지·탈퇴 회원의 블로그: GET /blogs/{handle}은 404 `BLOG_NOT_FOUND`(정지 안내 화면은 005에서 추가).
+정지·탈퇴 회원의 블로그와 삭제된 블로그: GET /blogs/{handle}은 404 `BLOG_NOT_FOUND`(정지 안내 화면은 005에서 추가). `/blogs/{handle}/...` 아래의 "주인" 권한 API는 그 블로그의 주인(`blogs.user_id`)만 쓸 수 있고, 삭제된 블로그는 주인에게도 404다.
+
+블로그 만들기 규칙(FR-158): 한 트랜잭션에서 회원 행을 잠그고(`SELECT ... FOR UPDATE`) 삭제하지 않은 블로그 수를 센 뒤, `COALESCE(users.max_blogs, blog.blogs.default-max-per-member)` 이상이면 409 `BLOG_LIMIT_EXCEEDED`, 아니면 생성한다. 블로그 삭제의 "마지막 블로그" 확인도 같은 잠금 안에서 한다(research R28).
 
 `CategoryNode`: `{ id, name, postCount, children: [CategoryNode] }`
 
@@ -94,9 +101,9 @@
 
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
-| POST | /posts/drafts | 로그인 | DraftWrite | 201 `{ id, savedAt }` (새 임시저장 글) |
+| POST | /blogs/{handle}/posts/drafts | 주인 | DraftWrite | 201 `{ id, savedAt }` (이 블로그의 새 임시저장 글. 내 블로그가 아니면 403 `FORBIDDEN`, 삭제된 블로그는 404) |
 | PUT | /posts/{id}/draft | 주인 | DraftWrite | 200 `{ id, savedAt }` (자동저장·임시저장, 발행본에는 영향 없음) |
-| GET | /posts/drafts/latest | 로그인 | - | 200 `{ id, title, savedAt }` 또는 204 (이어 쓰기 확인용) |
+| GET | /blogs/{handle}/posts/drafts/latest | 주인 | - | 200 `{ id, title, savedAt }` 또는 204 (이 블로그의 이어 쓰기 확인용) |
 | GET | /posts/{id}/draft | 주인 | - | 200 `DraftWrite + { savedAt }` (작성 화면 불러오기. 작성 중 사본이 없으면 발행본 내용을 그대로 돌려줌) |
 | DELETE | /posts/{id}/draft | 주인 | - | 204 (작성 중 사본 폐기. 발행본은 그대로 두고, 사본에서만 참조하던 이미지는 정리 대상 판단. 발행 전 글(DRAFT)에는 이 API 대신 `DELETE /posts/{id}`를 쓰며, 호출하면 409 `POST_NOT_PUBLISHED`) |
 | POST | /posts/{id}/publish | 주인 | PublishSettings | 200 PostDetail (발행 설정 화면의 발행 버튼, 수정 발행 포함) |
@@ -105,7 +112,7 @@
 | POST | /posts/{id}/restore | 주인 | - | 200 PostSummary (휴지통에서 삭제 전 상태로 복구, FR-084) |
 | POST | /posts/{id}/views | 모두 | - | 204 (중복 판단 후 조회수 증가, SSR loader가 호출) |
 
-글쓰기는 작성(임시저장) → 완료 → 발행 설정 → 발행 순서다(FR-013, FR-107, FR-108). "완료"는 화면 전환일 뿐 API 호출이 없다.
+글쓰기는 작성(임시저장) → 완료 → 발행 설정 → 발행 순서다(FR-013, FR-107, FR-108). "완료"는 화면 전환일 뿐 API 호출이 없다. 글은 처음 만들 때 정한 블로그에 속하며 다른 블로그로 옮길 수 없다. `/posts/{id}/...`의 "주인"은 그 글이 속한 블로그의 주인이다. `categoryId`는 같은 블로그의 카테고리여야 한다(아니면 404 `CATEGORY_NOT_FOUND`).
 
 `DraftWrite` (작성 화면의 내용):
 ```json
@@ -154,7 +161,7 @@
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
 | GET | /blogs/{handle}/manage/dashboard | 주인 | - | 200 `{ draftCount, recentPosts: [PostSummary], newComments7d, recentComments: [Comment + { postId, postTitle }] }` (최근 5건씩). 방문자 수(004 FR-067)·방명록(004)은 해당 스펙이 필드를 추가 |
-| POST | /blogs/{handle}/manage/posts/bulk | 주인 | `{ postIds: [id], action: "CHANGE_VISIBILITY" \| "MOVE_CATEGORY" \| "DELETE", visibility?, categoryId? }` | 200 `{ updated: n }` (모두 본인 글이어야 하며 하나라도 아니면 403, 최대 100개) |
+| POST | /blogs/{handle}/manage/posts/bulk | 주인 | `{ postIds: [id], action: "CHANGE_VISIBILITY" \| "MOVE_CATEGORY" \| "DELETE", visibility?, categoryId? }` | 200 `{ updated: n }` (모두 `{handle}` 블로그의 글이어야 하며 하나라도 아니면 403, 최대 100개) |
 | GET | /blogs/{handle}/manage/comments?page= | 주인 | - | 200 Page<Comment + { postId, postTitle }> (내 블로그 모든 글의 댓글, 최신순) |
 
 ## 카테고리 (category) — FR-023, FR-024
@@ -215,9 +222,13 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 
 ## 관리자 API 공통 규칙 (006)
 
-- 경로는 `/api/v1/admin/**`. 001에는 엔드포인트가 없고 규칙만 정한다.
+- 경로는 `/api/v1/admin/**`. 001은 규칙과 001 데이터에 바로 붙는 아래 엔드포인트만 정하고, 나머지 관리자 API는 006 이후 스펙이 정한다.
 - 매 요청마다 DB의 `users.role`(ADMIN 또는 SUPER_ADMIN)과 `users.status`(ACTIVE)를 확인한다. JWT의 role 클레임은 화면 메뉴 표시용 힌트일 뿐이다.
 - 관리자가 아니면(비로그인 포함) 404 `NOT_FOUND`.
+
+| 메서드 | 경로 | 권한 | 요청 | 응답 |
+|---|---|---|---|---|
+| PATCH | /admin/users/{id}/blog-limit | ADMIN, SUPER_ADMIN | `{ maxBlogs: number \| null }` (0 이상 정수, `null`은 기본값으로 되돌림) | 200 `{ userId, blogCount, maxBlogs, effectiveLimit }`. 지금 가진 블로그보다 작아도 허용(기존 블로그 유지, 새로 만들기만 막힘). 006 FR-106 작업 기록에 변경 전후 값 저장 (006 FR-160) |
 
 ## 프로퍼티 (backend `application.yml`)
 
@@ -245,6 +256,7 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 | blog.mail.username / blog.mail.password | (필수, 환경 변수) | SMTP 인증 |
 | blog.mail.from | (필수) | 보내는 사람 주소 |
 | blog.mail.starttls | true | STARTTLS 사용 |
+| blog.blogs.default-max-per-member | 3 | 회원별 한도(`users.max_blogs`)가 없을 때 회원 1명이 가질 수 있는 블로그 수 (FR-158). 1.0에서는 관리 화면에서 바꾸지 않음 |
 | blog.legal.terms-version | (필수) | 현재 약관·개인정보처리방침 버전(4개 언어 공통) |
 | blog.admin.bootstrap-super-admin-email | (선택) | 기동 시 SUPER_ADMIN이 한 명도 없으면 이 이메일의 회원을 SUPER_ADMIN으로 지정(006 FR-105). 첫 최고 관리자 지정의 유일한 경로 |
 | blog.media.allowed-types | image/jpeg, image/png, image/gif, image/webp | 업로드 허용 형식(내용 기준 판별) |
