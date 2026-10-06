@@ -5,7 +5,7 @@
 ## 준비
 
 - Java 21, Node.js 22, Docker
-- 세 저장소를 형제 디렉터리로 체크아웃: `blog/docs`, `blog/backend`, `blog/front`
+- 세 저장소를 형제 디렉터리로 체크아웃: `blog/blog-docs`, `blog/blog-backend`, `blog/blog-front`
 
 ```bash
 # MySQL
@@ -14,7 +14,7 @@ docker run -d --name blog-mysql -p 3306:3306 \
   mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
 
 # backend (첨부 디렉터리는 프로퍼티로 지정)
-cd blog/backend
+cd blog/blog-backend
 export BLOG_AUTH_JWT_SECRET=$(openssl rand -base64 48)
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="\
  --blog.base-url=http://localhost:5173 \
@@ -22,15 +22,15 @@ export BLOG_AUTH_JWT_SECRET=$(openssl rand -base64 48)
  --blog.media.temp-dir=$HOME/blog-data/media-tmp"
 
 # front
-cd ../front && npm install && npm run dev   # http://localhost:5173
+cd ../blog-front && npm install && npm run dev   # http://localhost:5173
 ```
 
 ## 자동 검증 (커버리지 게이트 포함)
 
 ```bash
-cd blog/backend && ./mvnw verify      # 슬라이스 테스트 + JaCoCo 라인 80% 미만이면 실패
-cd blog/front && npm test -- --coverage   # Vitest, 라인 80% 미만이면 실패
-cd blog/front && npm run e2e          # Playwright: 아래 시나리오 자동화
+cd blog/blog-backend && ./mvnw verify      # 슬라이스 테스트 + JaCoCo 라인 80% 미만이면 실패
+cd blog/blog-front && npm test -- --coverage   # Vitest, 라인 80% 미만이면 실패
+cd blog/blog-front && npm run e2e          # Playwright: 아래 시나리오 자동화
 ```
 
 ## 수동 검증 시나리오

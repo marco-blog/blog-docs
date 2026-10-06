@@ -4,4 +4,4 @@
 
 - 헌법: `.specify/memory/constitution.md`
 - 기능 스펙: `specs/NNN-기능명/` (spec.md, plan.md, tasks.md)
-- 관련 저장소: `backend`(Spring Boot), `front`(React SSR)
+- 관련 저장소: `blog-backend`(Spring Boot), `blog-front`(React SSR)

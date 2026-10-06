@@ -72,7 +72,7 @@ specs/001-blog-core/
 ### Source Code
 
 ```text
-backend/                                   # 저장소: backend
+blog-backend/                              # 저장소: blog-backend
 ├── pom.xml                                # groupId net.java21.blog, artifactId backend
 ├── src/main/java/net/java21/blog/backend/
 │   ├── BackendApplication.java
@@ -103,7 +103,7 @@ backend/                                   # 저장소: backend
     ├── {domain}/repository/*RepositoryTest.java   # @DataJpaTest + Testcontainers
     └── support/                                   # 테스트 픽스처, 컨테이너 설정
 
-front/                                     # 저장소: front
+blog-front/                                # 저장소: blog-front
 ├── package.json                           # name net.java21.blog.front
 ├── react-router.config.ts                 # ssr: true
 ├── vite.config.ts
