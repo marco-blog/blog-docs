@@ -162,3 +162,15 @@
   - 개인정보 파기(`blog.jobs.privacy-purge-cron`, 매일): `withdrawn_at < now - 30일`인 회원의 개인정보 파기, 90일 지난 로그인 기록 삭제, 만료된 비밀번호 재설정 토큰·리프레시 토큰 삭제.
   - 각 작업은 한 번에 정해진 건수씩 나눠 처리하고 결과 건수를 로그에 남긴다.
 - **Alternatives**: Quartz(DB 테이블 추가, 지금 필요 없음), 외부 cron(실행 파트 밖 설정이 늘어남).
+
+## R27. 보안 헤더와 XSS 방어 계층 (FR-016, FR-140, 원칙 IV)
+- **Decision**: XSS는 세 겹으로 막는다.
+  1. 저장 시: 본문은 R8의 OWASP Sanitizer로 허용 태그만 남긴다. `<script>`, `on*` 속성, `javascript:` 주소, `style` 속성은 허용 목록에 없으므로 제거된다. iframe은 R25 허용 목록(YouTube, Vimeo)만 통과한다. 댓글, 방명록, 닉네임, 블로그 이름은 HTML을 받지 않는 일반 텍스트로 저장한다.
+  2. 표시 시: front는 sanitize된 `content_html`에만 `dangerouslySetInnerHTML`을 쓰고, 나머지는 React의 기본 이스케이프로 출력한다. 이 규칙은 ESLint 규칙(`react/no-danger` 예외 목록)으로 강제한다.
+  3. 브라우저: nginx가 아닌 front 서버(Express)가 모든 HTML 응답에 보안 헤더를 붙인다.
+     - `Content-Security-Policy`: `default-src 'self'; script-src 'self' 'nonce-{요청별}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. 외부 블로그 썸네일(007)은 backend가 받아 `/media`로 제공하므로 `img-src`에 외부 도메인을 넣지 않는다.
+     - `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=31536000`(운영만).
+  - `/media/**` 응답은 저장된 형식(이미지 4종)의 `Content-Type`과 `nosniff`, `Content-Disposition: inline`을 붙인다. 업로드 형식은 확장자가 아니라 파일 내용으로 판별하고, SVG와 HTML은 받지 않는다(R11 `allowed-types`).
+- **CSRF**: R3(SameSite=Lax 쿠키 + 상태 변경 요청의 `Origin` 검사)로 막는다. 쿠키 인증이라 토큰을 JS에서 읽을 수 없으므로(HttpOnly) XSS가 생겨도 토큰 자체는 빼낼 수 없다.
+- **검증**: 통합 테스트로 악성 본문(`<script>`, `<img onerror>`, `javascript:` 링크, 허용 목록 밖 iframe, SVG 업로드)이 저장 후 무력화되는지, HTML 응답에 CSP 헤더가 있는지 확인한다.
+- **Alternatives**: 클라이언트 쪽 DOMPurify만 사용(SSR, RSS, 포털 요약에 같은 HTML이 쓰이므로 서버에서 한 번 정리하는 편이 안전), Spring Security 헤더만 사용(HTML은 front가 내려주므로 front에서 붙여야 함).
