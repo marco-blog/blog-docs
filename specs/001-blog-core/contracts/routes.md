@@ -62,6 +62,7 @@
 | `/updates/:version` (`:version`은 `v\d+\.\d+\.\d+`, 예: `/updates/v1.2.0`) | 버전별 릴리스 노트 고유 주소. 제목마다 앵커(`#새-기능`), 이전·다음 버전 링크. 버전 페이지를 열면 로그인 회원의 마지막 확인 버전 갱신(POST /me/release-notes/seen). 초안·없는 버전은 404. 사이트맵 포함 | 003 FR-161, FR-163, FR-164 |
 | `/updates/:version/history`, `/updates/:version/history/:revisionNo` | 수정 이력(게시 후 수정본 목록)과 이전 수정본 보기. noindex | 003 FR-166 |
 | `/updates?q=` | 릴리스 노트 검색(화면 언어, 게시된 노트만). 결과는 오른쪽 영역에 표시. noindex | 003 FR-165 |
+| `/updates/seen` | 릴리스 노트 배너 닫기(리소스 라우트, `action`만. POST /me/release-notes/seen 후 원래 화면으로) | 003 FR-163 |
 | `/:handle/guestbook` | 방명록 | 004 FR-056 |
 | `/:handle/notice` | 공지 목록 | 004 FR-059 |
 | `/:handle/archive/:year/:month` | 월별 보관함 | 004 FR-061 |
@@ -72,6 +73,7 @@
 | `/:handle/manage/trackbacks` | 받은 트랙백 | 005 FR-053, 006 FR-099 |
 | `/rights-request` | 비회원 권리 침해(저작권 등) 신고 양식 | 005 FR-040 |
 | `/admin`, `/admin/**` | 시스템 관리자 콘솔(대시보드, topics, portal, users, content, reports, external-blogs, reserved-handles, settings, admins, audit-log, release-notes). 관리자가 아니면 404 | 006 FR-096~106 |
+| `/admin/topics`, `/admin/portal/curations`, `/admin/portal/exclusions`, `/admin/portal/settings` | 콘솔의 003 메뉴: 주제 관리, 포털 추천, 포털 제외, 포털 설정값(003 contracts/routes.md). `/admin`은 006 대시보드 전까지 `/admin/topics`로 리다이렉트 | 003 FR-079, FR-086·088·091~093·147, 006 FR-102 |
 | `/admin/release-notes`, `/admin/release-notes/new`, `/admin/release-notes/:id`, `/admin/release-notes/:id/revisions` | 릴리스 노트 목록·만들기·수정(언어별 탭, 미리보기, 게시·게시 중단)·수정본 | 006 FR-167·168 |
 | `/:handle/manage/external-blogs`, `/:handle/manage/external-blogs/new` | 내 외부 블로그(등록 신청·소유 인증·수집된 글 주제 변경·해제). 외부 블로그는 회원에 속하므로 내 어느 블로그의 관리 화면에서 열어도 같은 목록이다 | 007 FR-109~112, FR-120, FR-126, 006 FR-099 |
 
