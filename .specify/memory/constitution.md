@@ -33,6 +33,9 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 ### VI. 단순함
 지금 필요한 것만 만든다. 추상화나 새 라이브러리는 plan.md의 Complexity Tracking에 이유를 적어야 도입할 수 있다.
 
+### VII. 다국어 우선
+화면에 보이는 모든 문구는 코드에 직접 쓰지 않고 메시지 키로 관리하며, 한국어·영어·일본어·중국어(간체) 4개 언어 번역을 같은 PR에 함께 넣는다. 번역 누락은 자동 점검(테스트)으로 막는다. backend 오류는 코드만 돌려주고 문구는 front가 언어에 맞게 보여준다(메일 문구는 backend 메시지 파일).
+
 ## 기술 제약
 
 | 구분 | 결정 | 출처 |
@@ -50,6 +53,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | 글 에디터 | Milkdown Crepe (Markdown 저장, 입력 즉시 서식 렌더링, `/` 명령·플로팅 메뉴, 큰 툴바 없음). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정(2026-10-06 확정. TOAST UI 대체, CKEditor 스타일 배제). 상단 툴바(top-bar)와 AI 기능은 끔, UI 문구는 한국어로 설정 |
 | 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB), `blog.media.thumbnail-dir`, `blog.media.thumbnail.sizes`(허용 썸네일 크기 목록). 썸네일 URL은 `/media/{id}/{w}x{h}`이며 허용 목록 외 크기는 거부. 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
 | 개인정보 암호화 | 개인정보 컬럼은 AES-256-GCM으로 암호화 저장, 조회 시 복호화(JPA AttributeConverter). 검색이 필요한 이메일은 HMAC 해시 컬럼 병행. 키는 프로퍼티 `blog.crypto.*`(환경 변수·외부 설정 파일로 주입, 저장소 커밋 금지), 키 버전으로 교체 지원 | 사용자 결정(암호화·프로퍼티 키), 해시 컬럼·GCM은 기본값 |
+| 다국어 | 지원 언어 ko(기준)·en(기본 대체)·ja·zh-CN. front는 react-i18next(기본값), 번역 파일 `front/app/locales/{lang}/*.json`. backend 메일 문구는 Spring MessageSource `messages_{lang}.properties`. 주소에 언어 접두어를 넣지 않음(쿠키·회원 설정·Accept-Language) | 사용자 결정(4개 언어), 라이브러리·URL 방식은 기본값 |
 | API 문서 | springdoc-openapi, front 타입은 OpenAPI에서 생성 | 기본값 |
 
 "기본값"으로 표시된 항목은 plan 단계에서 바꿀 수 있으며, 바꾸면 이 표를 개정한다.
@@ -75,6 +79,6 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 
 ## Governance
 
-이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VI을 확인한다.
+이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VII을 확인한다.
 
-**Version**: 2.2.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 2.3.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
