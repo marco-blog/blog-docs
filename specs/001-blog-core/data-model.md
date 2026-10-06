@@ -10,6 +10,8 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 erDiagram
     USERS ||--|| BLOGS : "owns"
     USERS ||--o{ REFRESH_TOKENS : "has"
+    USERS ||--o{ LOGIN_HISTORY : "has"
+    USERS ||--o{ PASSWORD_RESET_TOKENS : "has"
     BLOGS ||--o{ CATEGORIES : "has"
     CATEGORIES ||--o{ CATEGORIES : "parent of (2단계)"
     BLOGS ||--o{ POSTS : "contains"
@@ -25,7 +27,8 @@ erDiagram
 
     USERS {
         bigint id PK
-        varchar email UK
+        varbinary email_enc
+        char email_hash UK
         varchar password_hash
         varchar nickname
         varchar role
@@ -111,12 +114,13 @@ erDiagram
 | 컬럼 | 타입 | 제약 / 규칙 |
 |---|---|---|
 | id | BIGINT | PK |
-| email | VARCHAR(255) | UNIQUE, 소문자로 정규화 (FR-001) |
+| email_enc | VARBINARY(512) | AES-256-GCM 암호문(키 버전 + IV + 암호문 + 태그), 소문자 정규화 후 암호화 (FR-134) |
+| email_hash | CHAR(64) | UNIQUE, HMAC-SHA256(정규화된 이메일, 검색용 키). 로그인·중복 확인·관리자 정확 검색 (FR-135) |
 | password_hash | VARCHAR(100) | BCrypt (FR-003) |
 | nickname | VARCHAR(30) | 필수 |
 | bio | VARCHAR(300) | |
 | profile_image_url | VARCHAR(500) | |
-| role | VARCHAR(10) | USER / ADMIN |
+| role | VARCHAR(15) | USER / ADMIN / SUPER_ADMIN (006 FR-105) |
 | status | VARCHAR(10) | ACTIVE / SUSPENDED / WITHDRAWN |
 | failed_login_count | INT | 기본 0 (FR-007) |
 | locked_until | DATETIME(6) | NULL 가능 |
@@ -240,3 +244,29 @@ erDiagram
 - 글 수정으로 본문에서 빠짐, 또는 글 영구 삭제 → ORPHANED.
 - TEMP이고 created_at + temp-ttl 경과, 또는 ORPHANED → 정리 작업이 파일과 행 삭제.
 - ORPHANED 이미지를 같은 글이 다시 참조하면 ATTACHED로 복구(정리 전까지).
+
+## login_history
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| id | BIGINT | PK |
+| user_id | BIGINT | FK users, NULL(존재하지 않는 이메일 시도) |
+| success | BOOLEAN | |
+| ip_enc | VARBINARY(128) | 암호화된 접속 IP (FR-134) |
+| user_agent | VARCHAR(300) | |
+| created_at | DATETIME(6) | 3개월 후 파기 (FR-139) |
+
+## password_reset_tokens
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| id | BIGINT | PK |
+| user_id | BIGINT | FK users |
+| token_hash | CHAR(64) | UNIQUE, SHA-256 |
+| expires_at | DATETIME(6) | 발급 + 30분 |
+| used_at | DATETIME(6) | 한 번만 사용 (FR-133) |
+
+## 개인정보 암호화 규칙 (FR-134~136)
+- 방식: AES-256-GCM, 값마다 무작위 IV. JPA `AttributeConverter`로 저장 시 암호화, 조회 시 복호화.
+- 암호문 형식: `[키 버전 1바이트][IV 12바이트][암호문][태그 16바이트]`. 키 버전으로 교체 전 데이터도 복호화.
+- 검색용 해시: 암호문은 같은 값도 매번 달라 검색이 안 되므로, 별도 키로 만든 HMAC-SHA256 값을 `*_hash` 컬럼에 둔다.
+- 키: 프로퍼티 `blog.crypto.keys`(버전별 Base64 키), `blog.crypto.active-key-version`, `blog.crypto.hash-key`. 값은 환경 변수나 서버의 외부 설정 파일로 주입하고 저장소에 커밋하지 않는다.
+- 키 교체: 새 버전 키 추가 → active 버전 변경 → 배치 작업이 이전 버전 암호문을 새 키로 재암호화 → 완료 후 이전 키 제거. 해시 키는 바꾸지 않는다(바꾸면 전체 재계산 필요).

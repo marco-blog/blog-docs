@@ -42,11 +42,13 @@
 
 | 메서드 | 경로 | 권한 | 요청 | 성공 응답 |
 |---|---|---|---|---|
-| POST | /auth/signup | 비로그인 | `{ email, password, nickname, handle }` | 201 `{ userId, handle }` + 두 쿠키 설정(가입 즉시 로그인) |
+| POST | /auth/signup | 비로그인 | `{ email, password, nickname, handle, agreeTerms, agreePrivacy, over14 }` | 201 `{ userId, handle }` + 두 쿠키 설정(가입 즉시 로그인) |
 | GET | /auth/handle-availability?handle= | 모두 | - | 200 `{ available: true }` 또는 `{ available: false, reason: "TAKEN" \| "RESERVED" \| "INVALID" }` |
 | POST | /auth/login | 비로그인 | `{ email, password }` | 200 `{ userId, handle, nickname, role }` + 두 쿠키 설정 |
 | POST | /auth/refresh | refresh 쿠키 | - | 204 + 새 access·refresh 쿠키 (회전) |
 | POST | /auth/logout | 로그인 | - | 204 + 쿠키 삭제, family 폐기 |
+| POST | /auth/password-reset/request | 비로그인 | `{ email }` | 202 (가입 여부와 관계없이 같은 응답) |
+| POST | /auth/password-reset/confirm | 비로그인 | `{ token, newPassword }` | 204, 모든 family 폐기 |
 
 규칙: 비밀번호 8~64자, 영문+숫자 포함. handle `^[a-z0-9](?:[a-z0-9-]{1,18})[a-z0-9]$`, 연속 하이픈 금지, 예약어 목록은 [routes.md](./routes.md#예약어).
 
@@ -56,7 +58,9 @@
 |---|---|---|---|---|
 | GET | /me | 로그인 | - | 200 `{ userId, email, nickname, bio, profileImageUrl, role, blog: { handle, title } }` |
 | PATCH | /me | 로그인 | `{ nickname?, bio?, profileImageMediaId? }` | 200 위와 같음 |
-| DELETE | /me | 로그인 | `{ password }` | 204, 글 전부 비공개, 모든 토큰 폐기 |
+| DELETE | /me | 로그인 | `{ password }` | 204, 글 전부 비공개, 모든 토큰 폐기, 30일 후 개인정보 파기 |
+| PUT | /me/password | 로그인 | `{ currentPassword, newPassword }` | 204, 현재 기기 외 모든 family 폐기 |
+| GET | /me/login-history?page= | 로그인 | - | 200 Page<`{ at, success, ipMasked, device }`> (IP는 일부 가림, 예: 211.234.*.*) |
 
 ## 블로그 (blog) — FR-010~012
 
@@ -190,4 +194,10 @@ content: 1~1000자, 일반 텍스트(출력 시 이스케이프).
 | blog.media.max-size | 10MB | 파일당 최대 크기 |
 | blog.media.cleanup-cron | `0 0 * * * *` | 정리 작업 주기 |
 | blog.media.thumbnail-dir | (필수) | 썸네일 저장 디렉터리 |
+| blog.crypto.keys | (필수, 환경 변수) | 개인정보 암호화 키 목록 `{버전: Base64 32바이트}` |
+| blog.crypto.active-key-version | (필수) | 새로 암호화할 때 쓰는 키 버전 |
+| blog.crypto.hash-key | (필수, 환경 변수) | 이메일 검색용 HMAC 키 |
+| blog.mail.* | (필수) | 비밀번호 재설정 메일 발송 SMTP 설정 |
+| blog.privacy.withdrawn-retention | 30d | 탈퇴 후 개인정보 파기까지 |
+| blog.privacy.login-history-retention | 90d | 로그인 기록 보관 |
 | blog.media.thumbnail.sizes | 50x50,100x100,160x160,300x200,600x400,1200x630 + 각 2배 | 허용 썸네일 크기 |

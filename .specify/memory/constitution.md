@@ -49,9 +49,21 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | 서비스 도메인 | `blog.java21.net`. 블로그는 `blog.java21.net/{블로그주소}`, 글은 `blog.java21.net/{블로그주소}/{글번호}` | 사용자 결정 |
 | 글 에디터 | Milkdown Crepe (Markdown 저장, 입력 즉시 서식 렌더링, `/` 명령·플로팅 메뉴, 큰 툴바 없음). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정(2026-10-06 확정. TOAST UI 대체, CKEditor 스타일 배제). 상단 툴바(top-bar)와 AI 기능은 끔, UI 문구는 한국어로 설정 |
 | 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB), `blog.media.thumbnail-dir`, `blog.media.thumbnail.sizes`(허용 썸네일 크기 목록). 썸네일 URL은 `/media/{id}/{w}x{h}`이며 허용 목록 외 크기는 거부. 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
+| 개인정보 암호화 | 개인정보 컬럼은 AES-256-GCM으로 암호화 저장, 조회 시 복호화(JPA AttributeConverter). 검색이 필요한 이메일은 HMAC 해시 컬럼 병행. 키는 프로퍼티 `blog.crypto.*`(환경 변수·외부 설정 파일로 주입, 저장소 커밋 금지), 키 버전으로 교체 지원 | 사용자 결정(암호화·프로퍼티 키), 해시 컬럼·GCM은 기본값 |
 | API 문서 | springdoc-openapi, front 타입은 OpenAPI에서 생성 | 기본값 |
 
 "기본값"으로 표시된 항목은 plan 단계에서 바꿀 수 있으며, 바꾸면 이 표를 개정한다.
+
+## 1.0 운영 범위
+
+| 항목 | 1.0 결정 | 출처 |
+|---|---|---|
+| HTTPS | certbot(Let's Encrypt)으로 인증서 발급·자동 갱신. 앞단 리버스 프록시(nginx 기본값)가 TLS를 처리하고 front로 전달하며, 이는 실행 "파트"로 세지 않는 인프라 | 사용자 결정(certbot), nginx는 기본값 |
+| DB | 운영 측에서 별도 관리(설치·백업·복구). 애플리케이션은 접속 정보만 프로퍼티로 받음 | 사용자 결정 |
+| 첨부 파일 백업 | DB 밖에 있는 `blog.media.upload-dir`·`thumbnail-dir`는 DB 백업에 포함되지 않으므로, 최소한 upload-dir의 일일 백업 절차를 문서화한다(썸네일은 다시 만들 수 있어 제외) | 기본값(검토 필요) |
+| 로그 | 1.0은 최소 수준만: 애플리케이션 로그 파일(일별 롤링, 30일 보관), 요청 ID, 에러 스택. 헬스체크 엔드포인트 하나 | 사용자 결정(모니터링·장애 알림은 1.0 이후), 최소 로그는 기본값 |
+| 모니터링·장애 알림·대시보드 | 1.0 이후 버전에서 도입 | 사용자 결정 |
+| SEO 소유확인 등 | 1.0 이후 | 사용자 결정 |
 
 ## 개발 흐름
 
@@ -65,4 +77,4 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 
 이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VI을 확인한다.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 2.2.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
