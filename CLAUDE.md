@@ -16,3 +16,4 @@ blog/
 - 흐름: `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`
 - 문서와 대화는 한국어, 코드 식별자는 영어.
 - tasks.md의 파일 경로는 `blog-backend/...`, `blog-front/...`로 시작해 어느 저장소인지 드러낸다.
+- 릴리스 노트는 `release-notes/`에 버전마다 4개 언어(ko 기준, en, ja, zh-CN)로 쓴다. 규칙은 `release-notes/README.md`.
