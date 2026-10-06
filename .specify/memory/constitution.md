@@ -14,8 +14,15 @@
 ### II. 세 저장소, 두 개의 실행 파트
 저장소는 `docs`(스펙), `backend`(Spring), `front`(React SSR) 셋으로 나눈다. 실행되는 파트는 backend와 front 둘뿐이며, 그 외 서비스(게이트웨이, BFF, 별도 인증 서버)를 추가하지 않는다. 두 파트는 backend가 제공하는 REST API(OpenAPI 문서)로만 통신한다.
 
-### III. 테스트 우선
-tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. backend는 서비스 단위 테스트와 API 통합 테스트(Testcontainers 실제 DB), front는 주요 사용자 흐름 E2E 테스트를 갖는다. 스펙의 인수 시나리오마다 대응하는 테스트가 있어야 한다.
+### III. 테스트 우선과 커버리지 (NON-NEGOTIABLE)
+tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인수 시나리오마다 대응하는 테스트가 있어야 한다.
+- 커버리지: backend와 front 모두 라인 커버리지 80% 이상을 유지한다. 80% 미만이면 빌드가 실패해야 한다(backend는 JaCoCo, front는 Vitest coverage).
+- backend는 Spring 슬라이스 테스트를 기본으로 한다.
+  - Controller: `@WebMvcTest` + MockMvc, 서비스는 `@MockitoBean`으로 대체. 요청 검증, 응답 형식, 인증·인가(401/403/404)를 확인한다.
+  - Service: Spring 컨텍스트 없이 JUnit 5 + Mockito 단위 테스트. 비즈니스 규칙을 확인한다.
+  - Repository: `@DataJpaTest` + Testcontainers(MySQL). 쿼리, 연관관계, 제약조건을 확인한다.
+  - 그 밖의 슬라이스(`@JsonTest` 등)는 필요할 때 쓴다. `@SpringBootTest` 전체 컨텍스트 테스트는 핵심 흐름 몇 개의 통합 확인에만 쓴다.
+- front는 Vitest + Testing Library 단위 테스트와 주요 사용자 흐름 Playwright E2E를 갖는다.
 
 ### IV. 보안과 공개 범위
 인증은 토큰 기반이다. 모든 쓰기 API는 리소스 소유자를 검증한다. 비공개 글은 주인 외에게 404로 응답하며 목록, 검색, RSS, 사이트맵 어디에도 노출되지 않는다. 사용자 입력 HTML(본문, 댓글)은 서버에서 XSS 필터링한다.
@@ -53,4 +60,4 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. backend는 �
 
 이 헌법은 다른 모든 관행보다 우선한다. 개정은 이 파일의 수정과 버전 증가로만 하며, 원칙을 없애거나 뒤집으면 MAJOR, 원칙 추가는 MINOR, 문구 수정은 PATCH를 올린다. 모든 plan.md의 Constitution Check는 위 원칙 I~VI을 확인한다.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 1.3.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
