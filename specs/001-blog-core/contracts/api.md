@@ -2,7 +2,7 @@
 
 - 기준 경로: `/api/v1` (브라우저는 `https://blog.java21.net/api/v1/...`, front 서버가 backend로 프록시)
 - 형식: JSON, UTF-8. 시간은 ISO-8601 UTC(`2026-10-06T04:24:19Z`).
-- 인증: `access_token` 쿠키(JWT 30분). 없거나 만료면 401. 리프레시는 `refresh_token` 쿠키(`Path=/api/v1/auth`).
+- 인증: `access_token` 쿠키(JWT 30분). 없거나 만료면 401. 리프레시는 `refresh_token` 쿠키(`Path=/`, HttpOnly). SSR 중 401이면 front 서버가 `/auth/refresh`로 갱신한 뒤 다시 요청한다.
 - 모든 API 경로는 `/api/v1`로 시작한다(아래 표의 경로는 이 접두어를 뺀 것). 예외는 이미지(`/media/**`)와 블로그 피드·트랙백(`/{handle}/rss` 등, 002·005)뿐이다.
 - 상태 변경 요청은 `Origin`이 허용 출처가 아니면 403 `ORIGIN_NOT_ALLOWED`. 단, 외부 서버가 보내는 표준 트랙백 핑 `POST /{handle}/{postId}/trackback`(005)은 Origin 검사에서 제외한다(쿠키 인증을 쓰지 않으므로 CSRF 대상이 아니며, 자체 속도 제한·검증을 따른다).
 - 관리자 API(`/api/v1/admin/**`, 006)는 요청마다 DB에서 회원의 현재 `role`을 다시 읽어 확인한다(JWT의 role 클레임을 믿지 않음). 권한이 회수되면 다음 요청부터 거부된다. 관리자가 아닌 요청에는 403이 아니라 404 `NOT_FOUND`로 응답해 관리 API의 존재를 드러내지 않는다.
@@ -49,6 +49,7 @@
 | 422 | TAG_LIMIT_EXCEEDED / CATEGORY_DEPTH_EXCEEDED / REPLY_DEPTH_EXCEEDED | 규칙 위반 |
 | 422 | COMMENTS_DISABLED | 블로그 설정(FR-029) 또는 글별 설정(FR-107)이 댓글을 막음 |
 | 422 | POST_NOT_IN_TRASH | 휴지통에 없는 글을 복구하려 함 |
+| 422 | POST_CONTENT_EMPTY | 본문이 비어 있어 발행할 수 없음 |
 | 422 | TERMS_VERSION_OUTDATED | 가입 화면이 받은 약관 버전이 현재 버전과 다름(새로 고침 필요) |
 | 409 | POST_NOT_PUBLISHED | 발행 전 글에 작성 중 사본 폐기 요청 |
 | 423 | ACCOUNT_LOCKED | 로그인 5회 실패 후 10분 잠금 |

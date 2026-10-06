@@ -77,9 +77,10 @@ specs/001-blog-core/
 blog-backend/                              # 저장소: blog-backend
 ├── pom.xml                                # groupId net.java21.blog, artifactId backend
 ├── src/main/java/net/java21/blog/backend/
-│   ├── BackendApplication.java
+│   ├── BlogBackendApplication.java
+│   ├── config/        # SecurityConfig, SchedulingConfig, QueryDslConfig, JPA 감사
 │   ├── common/        # 공통 응답 ApiResponse(header·result·totalCount, api-guidelines.md), 오류 코드, 예외 핸들러, 시간
-│   ├── security/      # SecurityConfig, JwtProvider, JwtAuthFilter, CurrentUser, Origin 검사 필터(예외 목록), 관리자 API 역할 DB 확인
+│   ├── security/      # JwtProvider, JwtAuthFilter, CurrentUser, Origin 검사 필터(예외 목록), 관리자 API 역할 DB 확인
 │   ├── crypto/        # AES-256-GCM AttributeConverter, HMAC 해시, 키 버전·재암호화 배치 (FR-134~136)
 │   ├── auth/          # 가입(약관 동의), 로그인, 리프레시, 로그아웃, 로그인 잠금, 비밀번호 재설정·변경, 로그인 기록
 │   ├── user/          # 회원, 프로필, 언어·시간대, 탈퇴, 개인정보 파기 작업
@@ -100,8 +101,8 @@ blog-backend/                              # 저장소: blog-backend
 ├── src/main/resources/
 │   ├── application.yml
 │   ├── messages_{ko,en,ja,zh_CN}.properties   # 메일 문구 (R22, R23)
-│   ├── legal/{terms,privacy}_{ko,en,ja,zh-CN}.md
-│   └── db/migration/V1__init.sql ...
+│   └── legal/{terms,privacy}_{ko,en,ja,zh-CN}.md
+│   (스키마는 Crowfoot이 관리한다. Flyway 없음, blog-docs/db/README.md)
 └── src/test/java/net/java21/blog/backend/
     ├── {domain}/controller/*ControllerTest.java   # @WebMvcTest
     ├── {domain}/service/*ServiceTest.java         # Mockito 단위

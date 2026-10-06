@@ -8,10 +8,13 @@
 - 세 저장소를 형제 디렉터리로 체크아웃: `blog/blog-docs`, `blog/blog-backend`, `blog/blog-front`
 
 ```bash
-# MySQL
+# DB: 기본은 Crowfoot 개발 DB(cf_u2_d2). blog-backend/.env 에 DB_PASSWORD 와 암호화 키를 넣으면
+#     프로필을 지정하지 않아도(local) 그 DB로 뜬다(.env.example 참고).
+# 개인 MySQL을 쓰려면 스키마를 먼저 만든다(Hibernate는 ddl-auto=validate라 빈 DB로는 뜨지 않는다).
 docker run -d --name blog-mysql -p 3306:3306 \
   -e MYSQL_DATABASE=blog -e MYSQL_USER=blog -e MYSQL_PASSWORD=blog -e MYSQL_ROOT_PASSWORD=root \
-  mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+  mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci --ngram-token-size=2
+docker exec -i blog-mysql mysql -uroot -proot blog < blog/blog-docs/db/schema-mysql.sql
 
 # 개발용 메일 서버(Mailpit): SMTP localhost:1025, 받은 메일 확인 http://localhost:8025
 docker run -d --name blog-mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit

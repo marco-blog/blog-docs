@@ -33,7 +33,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
   - Controller: `@WebMvcTest` + MockMvc, 서비스는 `@MockitoBean`으로 대체. 요청 검증, 응답 형식, 인증·인가(401/403/404)를 확인한다.
   - Service: Spring 컨텍스트 없이 JUnit 5 + Mockito 단위 테스트. 비즈니스 규칙을 확인한다.
   - Repository: `@DataJpaTest` + H2(MySQL 모드, 스키마는 엔티티로 생성). 쿼리, 연관관계, 제약조건, 실행된 쿼리 수(N+1 없음)를 확인한다.
-  - MySQL 전용 쿼리(FULLTEXT ngram 검색 등)만 전용 테스트 MySQL 스키마(Crowfoot 발급 `cf_u2_d3`, `@MySqlRepositoryTest`, 접속 정보는 환경 변수)로 확인한다. 테스트 실행마다 스키마 스냅숏으로 다시 만들며, 개발 DB에는 절대 붙지 않는다.
+  - MySQL 전용 쿼리·동작(FULLTEXT ngram 검색, 행 잠금 동시성 등)만 전용 테스트 MySQL 스키마(Crowfoot 발급 `cf_u2_d3`, `@MySqlRepositoryTest`, 접속 정보는 환경 변수)로 확인한다. 테스트 실행마다 스키마 스냅숏으로 다시 만들며, 개발 DB에는 절대 붙지 않는다.
   - Testcontainers는 쓰지 않는다.
   - 그 밖의 슬라이스(`@JsonTest` 등)는 필요할 때 쓴다. `@SpringBootTest` 전체 컨텍스트 테스트는 핵심 흐름 몇 개의 통합 확인에만 쓴다.
 - front는 Vitest + Testing Library 단위 테스트와 주요 사용자 흐름 Playwright E2E를 갖는다.
@@ -63,7 +63,7 @@ tasks.md는 구현 작업보다 테스트 작업을 앞에 둔다. 스펙의 인
 | DB | MySQL 8 (Crowfoot 발급: 개발 `cf_u2_d2`, 테스트 `cf_u2_d3`) | 사용자 결정 |
 | 스키마 관리 | Crowfoot ERD 문서 "blog 1.0"이 원천. 개발 DB 변경은 Crowfoot `plan_migration`→승인→`apply_migration`(ALTER)으로 반영하고 실행한 ALTER는 `blog-docs/db/migrations/`에 남긴다. Flyway 등 다른 마이그레이션 도구는 쓰지 않는다. Hibernate는 `ddl-auto=validate`. 절차는 `blog-docs/db/README.md` | 사용자 결정(2026-10-06) |
 | backend 설정 프로필 | `local`(기본, 비밀 값은 커밋하지 않는 `.env`에서 읽음), `prod`(접속 정보는 환경 변수), `test`(테스트 DB) | 사용자 결정(2026-10-06) |
-| 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
+| 패키지/식별자 | 공통 `net.java21.blog`. backend: Maven groupId `net.java21.blog`, artifactId `blog-backend`, 기본 패키지 `net.java21.blog.backend`. front: 이름 `net.java21.blog.front`(package.json name) | 사용자 결정 |
 | 서비스 도메인 | `blog.java21.net`. 블로그는 `blog.java21.net/{블로그주소}`, 글은 `blog.java21.net/{블로그주소}/{글번호}` | 사용자 결정 |
 | 글 에디터 | Milkdown Crepe (Markdown 저장, 입력 즉시 서식 렌더링, `/` 명령·플로팅 메뉴, 큰 툴바 없음). 독자 화면은 서버에서 Markdown을 HTML로 변환하고 XSS 필터링 | 사용자 결정(2026-10-06 확정. TOAST UI 대체, CKEditor 스타일 배제). 상단 툴바(top-bar)와 AI 기능은 끔, UI 문구는 화면 언어(4개 언어)를 따름 |
 | 첨부 파일 저장 | backend 프로퍼티로 관리: `blog.media.upload-dir`(정식), `blog.media.temp-dir`(임시), `blog.media.temp-ttl`(기본 24h), `blog.media.cleanup-cron`, `blog.media.max-size`(기본 10MB), `blog.media.temp-quota`(회원별 임시 한도, 기본 200MB), `blog.media.thumbnail-dir`, `blog.media.thumbnail.sizes`(허용 썸네일 크기 목록). 이미지 주소는 순번 ID가 아닌 추측할 수 없는 무작위 키(`/media/{key}`, 썸네일 `/media/{key}/{w}x{h}`)를 쓰며 허용 목록 외 크기는 거부. 임시(TEMP) 이미지는 올린 사람에게만 제공. 에디터 업로드는 임시 폴더 → 글 저장 시 정식 폴더로 이동, 미등록 임시 파일은 스케줄러가 삭제 | 사용자 결정 |
