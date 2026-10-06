@@ -2,7 +2,7 @@
 
 **Branch**: `001-blog-core` | **Date**: 2026-10-06 | **Spec**: [spec.md](./spec.md)
 
-**Status**: 초안. 에디터 확정 후 `/speckit-plan`으로 다시 점검하고 contracts/, quickstart.md를 만든다.
+**Status**: Phase 1 완료 (contracts, quickstart 작성). 다음 단계는 `/speckit-tasks`.
 
 **Input**: Feature specification from `/specs/001-blog-core/spec.md`
 
@@ -18,7 +18,7 @@
 
 **Primary Dependencies**:
 - backend: Spring Boot 4.1.x(Web MVC, Security, Data JPA, Validation), jjwt 0.13, Flyway, springdoc-openapi 3.x, commonmark-java, OWASP Java HTML Sanitizer, Caffeine
-- front: React 19, Vite 8, React Router 8 framework 모드(@react-router/dev, @react-router/express), Express 5, 에디터(R7, 확정 대기: Milkdown Crepe 기본), openapi-typescript
+- front: React 19, Vite 8, React Router 8 framework 모드(@react-router/dev, @react-router/express), Express 5, @milkdown/crepe 7.x(R7), openapi-typescript
 
 **Storage**: MySQL 8(InnoDB, utf8mb4, FULLTEXT ngram 파서), 이미지 파일은 로컬 디스크(저장소 인터페이스로 추상화)
 

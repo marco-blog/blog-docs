@@ -1,4 +1,6 @@
-# Data Model: 멀티 유저 블로그 플랫폼 MVP
+# Data Model: 001 블로그 핵심
+
+> 002~004 스펙에서 추가될 테이블(좋아요, 구독, 알림, 통계, 신고, 트랙백, 방명록 등)은 각 스펙의 data-model에서 Flyway 마이그레이션으로 더한다.
 
 DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INCREMENT`. 공통 컬럼 `created_at`, `updated_at`.
 
@@ -67,16 +69,16 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 | summary | VARCHAR(300) | content_text 앞 150자, 메타 description |
 | thumbnail_url | VARCHAR(500) | 본문 첫 이미지 |
 | visibility | VARCHAR(10) | PUBLIC / PRIVATE (FR-015) |
-| status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED / HIDDEN |
-| view_count, like_count, comment_count | INT | 비정규화 카운터 |
+| status | VARCHAR(10) | DRAFT / PUBLISHED / DELETED (003에서 SCHEDULED, 004에서 HIDDEN 추가) |
+| view_count, comment_count | INT | 비정규화 카운터 (like_count는 002에서 추가) |
 | published_at | DATETIME(6) | 최초 발행 시각 |
 
-인덱스: (blog_id, status, visibility, published_at DESC), (category_id), FULLTEXT(title, content_text) WITH PARSER ngram.
+인덱스: (blog_id, status, visibility, published_at DESC), (category_id). 검색용 FULLTEXT는 002에서 추가.
 
 "공개 노출 가능" 조건(모든 목록·검색·피드·사이트맵·RSS 공통, FR-018):
 `status = PUBLISHED AND visibility = PUBLIC AND 작성자 users.status = ACTIVE`. 이 조건은 리포지토리 한 곳의 공통 스펙/쿼리 조각으로만 표현한다.
 
-상태 전이: DRAFT → PUBLISHED(발행), PUBLISHED ↔ DRAFT 불가, PUBLISHED/DRAFT → DELETED(주인), PUBLISHED → HIDDEN(관리자), HIDDEN → PUBLISHED(관리자 복구).
+상태 전이: DRAFT → PUBLISHED(발행), PUBLISHED → DRAFT 불가, DRAFT/PUBLISHED → DELETED(주인, 소프트 삭제). DELETED 후 30일이 지나면 영구 삭제하고 그 글의 이미지를 ORPHANED로 표시(FR-073).
 
 ## tags / post_tags
 - tags: id, name VARCHAR(30) UNIQUE(소문자·앞뒤 공백 제거로 정규화), FULLTEXT 불필요.
@@ -90,24 +92,30 @@ DB: MySQL 8, utf8mb4, 모든 시간은 UTC `DATETIME(6)`. PK는 `BIGINT AUTO_INC
 | user_id | BIGINT | FK users |
 | parent_id | BIGINT | NULL=댓글, 값=답글. 부모의 parent_id는 NULL이어야 함(1단계, FR-027) |
 | content | VARCHAR(1000) | 일반 텍스트 |
-| status | VARCHAR(10) | ACTIVE / DELETED / HIDDEN |
+| status | VARCHAR(10) | ACTIVE / DELETED |
 
 답글이 있는 댓글을 삭제하면 "삭제된 댓글입니다"로 자리만 남긴다.
 
-## post_likes
-(user_id, post_id) PK, created_at. 생성·삭제 시 posts.like_count와 post_daily_stat.likes 갱신 (FR-030).
-
-## subscriptions
-(subscriber_id, blog_id) PK, created_at. subscriber의 블로그와 blog_id가 같으면 거부 (FR-031).
-
-## notifications
-id, user_id(받는 사람), type(COMMENT / REPLY / SUBSCRIBE), actor_id, target_id, read_at, created_at (FR-033).
-
-## post_daily_stat
-(post_id, stat_date) PK, views INT, likes INT. 인기 글 계산용 (FR-034).
+## post_view_dedup
+테이블 없음. 조회수 중복 방지는 프로세스 내 캐시(Caffeine, 키 postId+방문자키, TTL 30분)로 처리 (FR-020, research R10).
 
 ## media
-id, owner_id, post_id(NULL 가능), stored_path VARCHAR(300), mime VARCHAR(20), size_bytes INT (FR-038, FR-039).
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| id | BIGINT | PK, 이미지 주소 `/media/{id}`의 ID |
+| owner_id | BIGINT | FK users |
+| post_id | BIGINT | FK posts, TEMP일 때 NULL |
+| status | VARCHAR(10) | TEMP / ATTACHED / ORPHANED |
+| stored_name | VARCHAR(100) | `{uuid}.{ext}` |
+| stored_path | VARCHAR(300) | 기준 디렉터리(temp-dir 또는 upload-dir)로부터의 상대 경로 |
+| mime | VARCHAR(20) | image/jpeg, image/png, image/gif, image/webp |
+| size_bytes | INT | ≤ blog.media.max-size |
 
-## reports
-id, reporter_id, target_type(POST / COMMENT), target_id, reason(SPAM / ABUSE / ADULT / COPYRIGHT / ETC), detail VARCHAR(500), status(PENDING / ACCEPTED / REJECTED), handled_by, handled_at. 같은 사람이 같은 대상을 중복 신고하면 거부 (FR-040, FR-041).
+인덱스: (status, created_at) 정리 작업용, (owner_id, status) 임시 한도 계산용.
+
+상태 전이 (FR-071~074):
+- 업로드 → TEMP (temp-dir에 저장). 회원의 TEMP 합계가 temp-quota를 넘으면 업로드 거부.
+- 글 저장·발행 시 본문이 참조 → ATTACHED (upload-dir로 이동, post_id 설정).
+- 글 수정으로 본문에서 빠짐, 또는 글 영구 삭제 → ORPHANED.
+- TEMP이고 created_at + temp-ttl 경과, 또는 ORPHANED → 정리 작업이 파일과 행 삭제.
+- ORPHANED 이미지를 같은 글이 다시 참조하면 ATTACHED로 복구(정리 전까지).
