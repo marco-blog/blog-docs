@@ -32,7 +32,7 @@
 
 **Constraints**: 숨김 글·숨김 댓글·방명록·트랙백과 정지 회원 콘텐츠가 작성자(와 관리자) 외에 노출 0건(001 SC-004, 노출 매트릭스 HIDDEN·SUSPENDED 행), 권리 침해 연락 이메일·트랙백 송신 IP 평문 저장 0건(001 FR-134), 트랙백 제목·요약의 스크립트 실행 0건(Edge Cases), 내부망 주소로의 서버 요청 0건(spec Assumptions), 관리자 API는 비관리자에게 404(006 FR-097), 커버리지 80%, 번역 누락 0건, N+1 금지
 
-**Scale/Scope**: 새 공개 API 5개(신고, 권리 침해 신고, CAPTCHA 설정, 트랙백 목록, 트랙백 받기 XML), 새 주인 API 4개(받은 트랙백 관리 목록·삭제, 보낸 트랙백 기록, 내 신고 없음), 새 관리자 API 14개(신고 4, 콘텐츠 숨김 3, 회원 4, 금칙어 3)와 운영 설정 키 6개, 001~004 API 확장 9곳(블로그 설정, 블로그 조회 오류 코드, 발행 설정, 글 상세, 관리 글 목록 필터, 댓글·방명록 응답, 로그인·가입 요청, 알림 종류). 새 화면 7개(`/rights-request`, `/:handle/manage/trackbacks`, `/admin/reports`, `/admin/reports/:id`, `/admin/users`, `/admin/users/:id`, `/admin/spam`) + "이용이 제한된 블로그" 화면, 001~004 화면 변경 9곳(신고 버튼: 글 상세·댓글·방명록·트랙백, 글 상세 트랙백 영역, 발행 설정, 관리 글 목록, 블로그 설정, 가입·로그인·비회원 쓰기 CAPTCHA)
+**Scale/Scope**: 새 공개 API 5개(신고, 권리 침해 신고, CAPTCHA 설정, 트랙백 목록, 트랙백 받기 XML), 새 주인 API 3개(받은 트랙백 관리 목록·삭제, 보낸 트랙백 기록), 새 관리자 API 16개(신고 5, 콘텐츠 숨김 3, 회원 4, 금칙어 4)와 운영 설정 키 6개, 001~004 API 확장 9곳(블로그 설정, 블로그 조회 오류 코드, 발행 설정, 글 상세, 관리 글 목록 필터, 댓글·방명록 응답, 로그인·가입 요청, 알림 종류). 새 화면 8개(`/rights-request`, `/:handle/manage/trackbacks`, `/admin/reports`, `/admin/reports/:id`, `/admin/users`, `/admin/users/:id`, `/admin/spam`, `/admin/contents/hidden-posts`) + "이용이 제한된 블로그" 화면, 001~004 화면 변경 9곳(신고 버튼: 글 상세·댓글·방명록·트랙백, 글 상세 트랙백 영역, 발행 설정, 관리 글 목록, 블로그 설정, 가입·로그인·비회원 쓰기 CAPTCHA)
 
 ## Constitution Check
 
@@ -46,7 +46,7 @@
 | IV. 보안과 공개 범위 | 노출은 001 `PostExposure` 한 곳(HIDDEN은 PUBLISHED가 아니므로 자동 제외), 댓글·방명록·트랙백은 각자 `canRead` 한 곳. 관리자 API는 003 `AdminAccessFilter`(DB의 현재 권한, 아니면 404). 정지는 로그인 거부 + 갱신 토큰 폐기 + 접근 토큰 무효(정지 목록). 연락 이메일·송신 IP는 AES-256-GCM, 응답에 암호문 없음. 트랙백 입력은 태그 제거 일반 텍스트, 송신은 내부망·리다이렉트 차단. 신고자 신원은 대상 작성자에게 보이지 않음 | 통과 |
 | V. SSR | 권리 침해 신고 양식, 이용 제한 블로그 안내, 글 상세의 트랙백 목록·트랙백 주소(RDF 자동 발견 포함)는 SSR. 신고 버튼은 `action` 폼(JS 없이 동작). CAPTCHA 위젯만 JS가 필요하며(외부 위젯의 본질), 콘텐츠 열람에는 영향 없음 | 통과 |
 | VI. 단순함 | 새 라이브러리 없음. 새 비동기 실행기 1개(트랙백 송신), 새 Caffeine 카운터 1종(공용 `RateLimiter`, 키 접두어로 용도 구분)과 캐시 2개(금칙어, 정지 목록), 외부 호출 1곳(CAPTCHA)만 추가(Complexity Tracking). 004의 비회원 IP 속도 제한(`RateLimitGuestWriteGuard`)은 공용 `RateLimiter`로 흡수해 장치 수를 줄인다 | 통과 |
-| VII. 다국어 우선 | 새 문구는 `report`·`trackback`·`moderation` namespace와 `admin`·`manage`·`post`·`comment`·`guestbook`·`auth`·`notification`·`common`·`errors`에 4개 언어로. 사용자가 쓴 트랙백 제목·요약·블로그 이름, 금칙어는 번역하지 않음. 새 오류 코드 21개·필드 오류 코드 1개 번역. 권리 침해 처리 메일은 backend `messages_*.properties`(4개 언어)이며, 비회원은 언어 설정이 없어 접수 화면 언어를 메일 언어로 쓴다(결정 표 9번). 트랙백 XML 응답 메시지는 영어 고정(기계가 읽는 프로토콜) | 통과 |
+| VII. 다국어 우선 | 새 문구는 `report`·`trackback`·`moderation` namespace와 `admin`·`manage`·`post`·`comment`·`guestbook`·`auth`·`notification`·`common`·`errors`에 4개 언어로. 사용자가 쓴 트랙백 제목·요약·블로그 이름, 금칙어는 번역하지 않음. 새 오류 코드 21개·필드 오류 코드 1개(`BANNED_WORD`) 번역. 권리 침해 처리 메일은 backend `messages_*.properties`(4개 언어 키)이며, 비회원은 언어 설정이 없고 저장할 컬럼도 없어 ko·en을 한 메일에 함께 쓴다(결정 표 9번). 트랙백 XML 응답 메시지는 영어 고정(기계가 읽는 프로토콜) | 통과 |
 | 기술 제약 | Java 21, Spring Boot 4.1.1, JPA + QueryDSL(OpenFeign), N+1 금지, Crowfoot 스키마(필수 DDL 없음, 선택 제안은 승인 절차), 공통 응답 틀(실제 HTTP 상태, 문자열 `resultCode`, 페이지는 `totalCount`), 개인정보 `blog.crypto.*`, 운영 설정은 `blog.*` 프로퍼티 기본값 + `system_settings` | 통과 |
 
 **Phase 1 이후 재확인**: research, contracts(api.md, routes.md), quickstart, tasks 작성 후 원칙 I~VII을 다시 점검했고 위반 없음. 설계 규칙과 다르게 만든 곳(트랙백 받기의 XML 응답·200 고정, 관리자 콘텐츠 숨김의 PUT 멱등 생성, 신고 처리의 대상 단위 처리, 권리 침해 신고의 202)은 contracts/api.md에 이유를 적었다.
@@ -163,7 +163,7 @@ blog-backend/src/main/resources/messages_{ko,en,ja,zh_CN}.properties   # 권리 
 blog-front/app/
 ├── routes/rights-request.tsx                 # 비회원 권리 침해 신고 양식(CAPTCHA)
 ├── routes/manage/trackbacks.tsx              # 받은 트랙백 관리
-├── routes/admin/reports.tsx, report.tsx, users.tsx, user.tsx, spam.tsx
+├── routes/admin/reports.tsx, report.tsx, users.tsx, user.tsx, spam.tsx, hidden-posts.tsx
 ├── routes/blog/restricted.tsx(컴포넌트)       # "이용이 제한된 블로그" — 004 공개 블로그 레이아웃이 BLOG_RESTRICTED일 때 그림
 ├── components/report/ReportButton.tsx, ReportDialog.tsx, ReasonSelect.tsx
 ├── components/trackback/TrackbackList.tsx, TrackbackUrlBox.tsx, TrackbackRdf.tsx, TrackbackTargetsField.tsx, PingResultList.tsx
