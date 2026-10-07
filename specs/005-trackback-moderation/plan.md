@@ -32,7 +32,7 @@
 
 **Constraints**: 숨김 글·숨김 댓글·방명록·트랙백과 정지 회원 콘텐츠가 작성자(와 관리자) 외에 노출 0건(001 SC-004, 노출 매트릭스 HIDDEN·SUSPENDED 행), 권리 침해 연락 이메일·트랙백 송신 IP 평문 저장 0건(001 FR-134), 트랙백 제목·요약의 스크립트 실행 0건(Edge Cases), 내부망 주소로의 서버 요청 0건(spec Assumptions), 관리자 API는 비관리자에게 404(006 FR-097), 커버리지 80%, 번역 누락 0건, N+1 금지
 
-**Scale/Scope**: 새 공개 API 5개(신고, 권리 침해 신고, CAPTCHA 설정, 트랙백 목록, 트랙백 받기 XML), 새 주인 API 3개(받은 트랙백 관리 목록·삭제, 보낸 트랙백 기록), 새 관리자 API 16개(신고 5, 콘텐츠 숨김 3, 회원 4, 금칙어 4)와 운영 설정 키 6개, 001~004 API 확장 9곳(블로그 설정, 블로그 조회 오류 코드, 발행 설정, 글 상세, 관리 글 목록 필터, 댓글·방명록 응답, 로그인·가입 요청, 알림 종류). 새 화면 8개(`/rights-request`, `/:handle/manage/trackbacks`, `/admin/reports`, `/admin/reports/:id`, `/admin/users`, `/admin/users/:id`, `/admin/spam`, `/admin/contents/hidden-posts`) + "이용이 제한된 블로그" 화면, 001~004 화면 변경 9곳(신고 버튼: 글 상세·댓글·방명록·트랙백, 글 상세 트랙백 영역, 발행 설정, 관리 글 목록, 블로그 설정, 가입·로그인·비회원 쓰기 CAPTCHA)
+**Scale/Scope**: 새 공개·회원 API 5개(회원 신고, 권리 침해 신고, CAPTCHA 설정, 트랙백 목록, 트랙백 받기 XML), 새 주인 API 3개(받은 트랙백 관리 목록·삭제, 보낸 트랙백 기록), 새 관리자 API 16개(신고 5, 콘텐츠 숨김 3, 회원 4, 금칙어 4)와 운영 설정 키 6개, 001~004 API 확장 9곳(블로그 설정, 블로그 조회 오류 코드, 발행 설정, 글 상세, 관리 글 목록 필터, 댓글·방명록 응답, 로그인·가입 요청, 알림 종류). 새 화면 8개(`/rights-request`, `/:handle/manage/trackbacks`, `/admin/reports`, `/admin/reports/:id`, `/admin/users`, `/admin/users/:id`, `/admin/spam`, `/admin/contents/hidden-posts`) + "이용이 제한된 블로그" 화면, 001~004 화면 변경 9곳(신고 버튼: 글 상세·댓글·방명록·트랙백, 글 상세 트랙백 영역, 발행 설정, 관리 글 목록, 블로그 설정, 가입·로그인·비회원 쓰기 CAPTCHA)
 
 ## Constitution Check
 
