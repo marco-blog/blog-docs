@@ -47,7 +47,7 @@ description: "001 블로그 핵심 작업 목록"
 - [x] T007 [P] QueryDSL(OpenFeign 포크 `io.github.openfeign.querydsl:querydsl-jpa` 7.x, `querydsl-apt` jakarta 프로세서)를 `blog-backend/pom.xml`에 추가하고 annotation processor 경로를 `maven-compiler-plugin`에 등록, JaCoCo 측정에서 생성된 `Q*` 클래스 제외
 - [x] T008 [P] H2 의존성(`com.h2database:h2`, test scope)을 `blog-backend/pom.xml`에 추가
 - [x] T009 [P] Playwright E2E 기반: `blog-front/playwright.config.ts`(front·backend 주소는 환경 변수), 가입 계정·글 생성 헬퍼 `blog-front/tests/e2e/support/fixtures.ts`, Mailpit API 헬퍼 `blog-front/tests/e2e/support/mailpit.ts`, `blog-front/package.json` 스크립트 `e2e`
-- [x] T010 [P] OpenAPI 타입 생성 스크립트 `gen:api`(openapi-typescript, backend `/v3/api-docs` → `blog-front/app/api/schema.d.ts`)를 `blog-front/package.json`에 추가(뼈대 브랜치에 이미 있으면 [X]로 표시)
+- [x] T010 [P] OpenAPI 타입 생성 스크립트 `gen:api`(openapi-typescript, backend `/v3/api-docs` → `blog-front/app/api/schema.d.ts`)를 `blog-front/package.json`에 추가(뼈대 브랜치에 이미 있으면 [X]로 표시) — (구현에서는 `gen:api`·`schema.d.ts`를 쓰지 않고 `blog-front/app/api/types.ts`를 손으로 관리)
 - [x] T011 [P] backend CI `blog-backend/.github/workflows/ci.yml`: PR·main push 트리거, JDK 21(temurin), Maven 캐시, `./mvnw -B verify`(JaCoCo 게이트 포함). `@MySqlRepositoryTest`용 `BLOG_TEST_DATASOURCE_URL/USERNAME/PASSWORD`·`BLOG_TEST_ALLOW_CLEAN`은 저장소 secret에서 주입하고, 없으면 해당 테스트는 건너뜀(개발 DB `cf_u2_d2` 접속 정보는 절대 넣지 않음)
 - [x] T012 [P] front CI `blog-front/.github/workflows/ci.yml`: Node 22, `npm ci`, `npm run typecheck`, `npm run lint`, `npm test -- --coverage`(80% 게이트, 번역 누락 테스트 포함), `npm run build`
 - [x] T013 [P] `blog-backend/CLAUDE.md`를 헌법 2.5.0에 맞게 고침: Flyway → Crowfoot(blog-docs/db/README.md), Testcontainers → H2 `@DataJpaTest` + MySQL 전용 쿼리만 `@MySqlRepositoryTest`, 오류 응답 `{code,message}` → 공통 틀(api-guidelines.md), QueryDSL·N+1 규칙
@@ -406,24 +406,24 @@ FR: FR-148~155 (단, 각 화면 문구의 4개 언어 번역은 US1~US4 작업�
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T223 [P] [US5] `blog-front/tests/unit/i18n/resolveLanguage.test.ts`: (1) 로그인 회원 `locale` → (2) 쿠키 `lang` → (3) `Accept-Language`(q 값 순서, `zh`·`zh-Hans`·`zh-CN` → zh-CN, `en-US` → en) → (4) en, 지원하지 않는 값 무시 (FR-149, AS1)
-- [ ] T224 [P] [US5] `blog-front/tests/unit/routes/locale.test.ts`: `/locale` `action`이 쿠키 `lang`(1년) 저장, 로그인 상태면 `PATCH /api/v1/me` `locale`, 원래 페이지(같은 사이트 경로만)로 리다이렉트, JS 없이 폼 전송으로 동작 (FR-150, AS2·3)
-- [ ] T225 [P] [US5] `blog-front/tests/unit/i18n/format.test.ts`: `Intl.DateTimeFormat`으로 ko "2026년 10월 6일", en "Oct 6, 2026", ja·zh-CN "2026年10月6日", 회원 `timeZone`(비회원 `Asia/Seoul`) 적용, 숫자 표기 (FR-153)
-- [ ] T226 [P] [US5] `blog-front/tests/unit/i18n/fallback.test.ts`: 일부 키가 빠진 언어는 en, en도 없으면 ko 문구가 나오고 키 이름이 나오지 않음, SSR `<html lang>`과 hydration 리소스가 같은 언어 (FR-152, AS6)
-- [ ] T227 [P] [US5] `blog-front/tests/unit/i18n/errorCodes.test.ts`: contracts/api.md 오류 코드 표의 001 코드 전부(`blog-front/app/api/errorCodes.ts` 상수)가 4개 언어 `errors.json`에 있음 (FR-154)
-- [ ] T228 [P] [US5] `blog-front/tests/unit/components/LanguageSelector.test.tsx`와 `blog-front/tests/unit/routes/settingsLanguage.test.tsx`(언어·시간대 선택 저장, IANA 시간대 목록)
-- [ ] T229 [P] [US5] `blog-front/tests/unit/components/EditorI18n.test.tsx`: Crepe 메뉴·플레이스홀더 문구가 `editor` namespace의 화면 언어 번역 (FR-148)
-- [ ] T230 [P] [US5] `blog-backend/src/test/java/net/java21/blog/backend/mail/MailLocaleTest.java`: 회원 `locale`이 en이면 재설정 메일이 영어, `locale` NULL이면 기본 en (AS5, quickstart #27)
-- [ ] T231 [P] [US5] E2E `blog-front/tests/e2e/us5-i18n.spec.ts`: Independent Test, 일본어 화면에서 한국어 글 본문은 그대로(AS4), 4개 언어 오류 문구 (quickstart #26~28)
+- [x] T223 [P] [US5] `blog-front/tests/unit/i18n/resolveLanguage.test.ts`: (1) 로그인 회원 `locale` → (2) 쿠키 `lang` → (3) `Accept-Language`(q 값 순서, `zh`·`zh-Hans`·`zh-CN` → zh-CN, `en-US` → en) → (4) en, 지원하지 않는 값 무시 (FR-149, AS1)
+- [x] T224 [P] [US5] `blog-front/tests/unit/routes/locale.test.ts`: `/locale` `action`이 쿠키 `lang`(1년) 저장, 로그인 상태면 `PATCH /api/v1/me` `locale`, 원래 페이지(같은 사이트 경로만)로 리다이렉트, JS 없이 폼 전송으로 동작 (FR-150, AS2·3)
+- [x] T225 [P] [US5] `blog-front/tests/unit/i18n/format.test.ts`: `Intl.DateTimeFormat`으로 ko "2026년 10월 6일", en "Oct 6, 2026", ja·zh-CN "2026年10月6日", 회원 `timeZone`(비회원 `Asia/Seoul`) 적용, 숫자 표기 (FR-153)
+- [x] T226 [P] [US5] `blog-front/tests/unit/i18n/fallback.test.ts`: 일부 키가 빠진 언어는 en, en도 없으면 ko 문구가 나오고 키 이름이 나오지 않음, SSR `<html lang>`과 hydration 리소스가 같은 언어 (FR-152, AS6)
+- [x] T227 [P] [US5] `blog-front/tests/unit/i18n/errorCodes.test.ts`: contracts/api.md 오류 코드 표의 001 코드 전부(`blog-front/app/api/errorCodes.ts` 상수)가 4개 언어 `errors.json`에 있음 (FR-154)
+- [x] T228 [P] [US5] `blog-front/tests/unit/components/LanguageSelector.test.tsx`와 `blog-front/tests/unit/routes/settingsLanguage.test.tsx`(언어·시간대 선택 저장, IANA 시간대 목록)
+- [x] T229 [P] [US5] `blog-front/tests/unit/components/EditorI18n.test.tsx`: Crepe 메뉴·플레이스홀더 문구가 `editor` namespace의 화면 언어 번역 (FR-148)
+- [x] T230 [P] [US5] `blog-backend/src/test/java/net/java21/blog/backend/mail/MailLocaleTest.java`: 회원 `locale`이 en이면 재설정 메일이 영어, `locale` NULL이면 기본 en (AS5, quickstart #27)
+- [x] T231 [P] [US5] E2E `blog-front/tests/e2e/us5-i18n.spec.ts`: Independent Test, 일본어 화면에서 한국어 글 본문은 그대로(AS4), 4개 언어 오류 문구 (quickstart #26~28)
 
 ### Implementation for User Story 5
 
-- [ ] T232 [US5] 언어 결정 `blog-front/app/i18n/resolveLanguage.server.ts`를 `blog-front/app/root.tsx` loader에 연결(서버 i18next 인스턴스, `<html lang>`, hydration 리소스 전달)
-- [ ] T233 [P] [US5] `blog-front/app/routes/locale.ts`(리소스 라우트 `action`)와 `blog-front/app/components/layout/LanguageSelector.tsx`를 `Footer.tsx`에 연결
-- [ ] T234 [P] [US5] `blog-front/app/routes/settings.language.tsx`(언어·시간대, `PATCH /me`)
-- [ ] T235 [P] [US5] 날짜·숫자 형식 `blog-front/app/i18n/format.ts`를 글 목록·글 상세·댓글·로그인 기록·관리 화면의 시각 표시에 적용
-- [ ] T236 [P] [US5] Crepe 문구 설정을 `editor` namespace 번역으로 채움: `blog-front/app/components/Editor/Editor.tsx`, `blog-front/app/locales/{ko,en,ja,zh-CN}/editor.json`
-- [ ] T237 [US5] `blog-front/app/api/errorCodes.ts`와 4개 언어 전체 번역 점검·보완(모든 namespace 누락 0건, SC-024)
+- [x] T232 [US5] 언어 결정 `blog-front/app/i18n/resolveLanguage.server.ts`를 `blog-front/app/root.tsx` loader에 연결(서버 i18next 인스턴스, `<html lang>`, hydration 리소스 전달)
+- [x] T233 [P] [US5] `blog-front/app/routes/locale.ts`(리소스 라우트 `action`)와 `blog-front/app/components/layout/LanguageSelector.tsx`를 `Footer.tsx`에 연결
+- [x] T234 [P] [US5] `blog-front/app/routes/settings.language.tsx`(언어·시간대, `PATCH /me`)
+- [x] T235 [P] [US5] 날짜·숫자 형식 `blog-front/app/i18n/format.ts`를 글 목록·글 상세·댓글·로그인 기록·관리 화면의 시각 표시에 적용
+- [x] T236 [P] [US5] Crepe 문구 설정을 `editor` namespace 번역으로 채움: `blog-front/app/components/Editor/Editor.tsx`, `blog-front/app/locales/{ko,en,ja,zh-CN}/editor.json`
+- [x] T237 [US5] `blog-front/app/api/errorCodes.ts`와 4개 언어 전체 번역 점검·보완(모든 namespace 누락 0건, SC-024)
 
 **Checkpoint**: 모든 스토리가 독립적으로 동작하고 번역 누락 0건
 
@@ -433,17 +433,17 @@ FR: FR-148~155 (단, 각 화면 문구의 4개 언어 번역은 US1~US4 작업�
 
 **Purpose**: 여러 스토리에 걸친 검증과 운영 최소 범위(헌법 "1.0 운영 범위")
 
-- [ ] T238 [P] `blog-backend/src/test/java/net/java21/blog/backend/integration/ExposureMatrixIntegrationTest.java`(`@SpringBootTest`): 노출 매트릭스 001 행 전체를 글 상세·블로그 목록·카테고리·블로그 태그·서비스 태그·관리 목록 API에서 한 번에 확인(주인 외 노출 0건, SC-004)
-- [ ] T239 [P] `blog-backend/src/test/java/net/java21/blog/backend/integration/XssDefenseIntegrationTest.java`: `<script>`, `<img onerror>`, `javascript:` 링크, 허용 목록 밖 iframe 본문과 SVG 업로드가 저장 후 무력화·거부됨(R27 검증)
-- [ ] T240 [P] `blog-backend/src/test/java/net/java21/blog/backend/openapi/OpenApiContractTest.java`: `/v3/api-docs`에 contracts/api.md의 001 엔드포인트(메서드·경로)가 모두 있고 응답이 공통 틀임. 이어서 `npm run gen:api`로 `blog-front/app/api/schema.d.ts`를 갱신하고 `npm run typecheck` 통과
-- [ ] T241 [P] 로그인이 필요한 API 응답에 `Cache-Control: no-store`가 붙는지 확인하는 테스트 `blog-backend/src/test/java/net/java21/blog/backend/security/CacheHeadersWebMvcTest.java`(api-guidelines 8절)
-- [ ] T242 [P] 로그 최소 범위 `blog-backend/src/main/resources/logback-spring.xml`: 일별 롤링·30일 보관, `traceId` MDC 출력, 에러 스택(prod에서 `resultMessage`에 내부 정보 없음 확인)
-- [ ] T243 [P] 운영 문서 `blog-backend/docs/operations.md`: 필수 프로퍼티·환경 변수 목록, `blog.media.upload-dir` 일일 백업 절차(thumbnail-dir 제외), 정기 작업 cron, 첫 SUPER_ADMIN 지정
-- [ ] T244 [P] 두 저장소 README를 4개 언어로 갱신(실행·테스트 명령): `blog-backend/README.md`·`README.en.md`·`README.ja.md`·`README.zh-CN.md`, `blog-front/README.md`·`README.en.md`·`README.ja.md`·`README.zh-CN.md`
-- [ ] T245 [P] front E2E CI `blog-front/.github/workflows/e2e.yml`(수동 실행·야간): MySQL 서비스에 `schema-mysql.sql` 적용, Mailpit, backend 체크아웃·기동 후 `npm run e2e`
-- [ ] T246 성능 확인(`blog-front/app/routes/post-detail.tsx` SSR + `blog-backend/src/main/java/net/java21/blog/backend/post/service/PostService.java`): 글 10만·회원 1만 데이터에서 글 상세 SSR p95 1초 이내, 동시 200(SC-002·003). 측정 도구는 저장소에 추가하지 않고 절차와 결과를 PR 설명에 기록
-- [ ] T247 커버리지 확인: `blog-backend`의 `./mvnw verify`, `blog-front`의 `npm test -- --coverage` 모두 라인 80% 이상
-- [ ] T248 `blog-docs/specs/001-blog-core/quickstart.md` 수동 검증 시나리오 #1~33 전체 실행(backend·front 함께 기동)
+- [x] T238 [P] `blog-backend/src/test/java/net/java21/blog/backend/integration/ExposureMatrixIntegrationTest.java`(`@SpringBootTest`): 노출 매트릭스 001 행 전체를 글 상세·블로그 목록·카테고리·블로그 태그·서비스 태그·관리 목록 API에서 한 번에 확인(주인 외 노출 0건, SC-004)
+- [x] T239 [P] `blog-backend/src/test/java/net/java21/blog/backend/integration/XssDefenseIntegrationTest.java`: `<script>`, `<img onerror>`, `javascript:` 링크, 허용 목록 밖 iframe 본문과 SVG 업로드가 저장 후 무력화·거부됨(R27 검증)
+- [x] T240 [P] `blog-backend/src/test/java/net/java21/blog/backend/openapi/OpenApiContractTest.java`: `/v3/api-docs`에 contracts/api.md의 001 엔드포인트(메서드·경로)가 모두 있고 응답이 공통 틀임. 이어서 `npm run gen:api`로 `blog-front/app/api/schema.d.ts`를 갱신하고 `npm run typecheck` 통과 — (`OpenApiContractTest`만 해당. `gen:api`·`schema.d.ts`는 쓰지 않음, T010 참고)
+- [x] T241 [P] 로그인이 필요한 API 응답에 `Cache-Control: no-store`가 붙는지 확인하는 테스트 `blog-backend/src/test/java/net/java21/blog/backend/security/CacheHeadersWebMvcTest.java`(api-guidelines 8절)
+- [x] T242 [P] 로그 최소 범위 `blog-backend/src/main/resources/logback-spring.xml`: 일별 롤링·30일 보관, `traceId` MDC 출력, 에러 스택(prod에서 `resultMessage`에 내부 정보 없음 확인)
+- [x] T243 [P] 운영 문서 `blog-backend/docs/operations.md`: 필수 프로퍼티·환경 변수 목록, `blog.media.upload-dir` 일일 백업 절차(thumbnail-dir 제외), 정기 작업 cron, 첫 SUPER_ADMIN 지정
+- [x] T244 [P] 두 저장소 README를 4개 언어로 갱신(실행·테스트 명령): `blog-backend/README.md`·`README.en.md`·`README.ja.md`·`README.zh-CN.md`, `blog-front/README.md`·`README.en.md`·`README.ja.md`·`README.zh-CN.md`
+- [x] T245 [P] front E2E CI `blog-front/.github/workflows/e2e.yml`(수동 실행·야간): MySQL 서비스에 `schema-mysql.sql` 적용, Mailpit, backend 체크아웃·기동 후 `npm run e2e`
+- [ ] T246 성능 확인(`blog-front/app/routes/post-detail.tsx` SSR + `blog-backend/src/main/java/net/java21/blog/backend/post/service/PostService.java`): 글 10만·회원 1만 데이터에서 글 상세 SSR p95 1초 이내, 동시 200(SC-002·003). 측정 도구는 저장소에 추가하지 않고 절차와 결과를 PR 설명에 기록 — (측정함, backend PR #15: 글 10만·회원 1만에서 동시 200일 때 p95 1.18~2.10초로 기준 미달. 공유 vCPU 환경이라 전용 서버에서 다시 측정, front SSR은 미측정)
+- [x] T247 커버리지 확인: `blog-backend`의 `./mvnw verify`, `blog-front`의 `npm test -- --coverage` 모두 라인 80% 이상
+- [ ] T248 `blog-docs/specs/001-blog-core/quickstart.md` 수동 검증 시나리오 #1~33 전체 실행(backend·front 함께 기동) — (수동, 배포 후)
 
 ---
 
