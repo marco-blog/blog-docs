@@ -64,6 +64,8 @@
 
 ## 스키마 변경
 
+**반영 (2026-10-07, marco 승인)**: 선택 인덱스 `idx_external_posts_topic_decided`는 [migrations/0002](../../db/migrations/0002-add-query-indexes.sql)로 반영했다.
+
 **필수 DDL은 없다.** 007 data-model의 테이블·컬럼·생성 컬럼·인덱스·외래 키와 003 `portal_exclusions` 변경이 모두 `db/schema-mysql.sql`(Crowfoot 문서 "blog 1.0", `migrations/0001-baseline.sql`)에 있다. 007 쿼리·쓰기를 하나씩 대조했다.
 
 | 쿼리·쓰기 | 쓰는 테이블·컬럼·인덱스·제약 | 비고 |
