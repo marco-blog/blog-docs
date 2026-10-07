@@ -141,7 +141,7 @@
   - 미리보기: "미리보기" 버튼이 `intent=preview`로 같은 action에 보내 `POST /admin/release-notes/preview` 결과(`contentHtml`·`toc`)를 편집기 옆에 그린다(JS가 있으면 `useFetcher`로 화면 이동 없이, 없으면 입력 값을 유지한 채 다시 그림). backend가 살균한 HTML이므로 `dangerouslySetInnerHTML` 허용 목록(001 R27, ESLint 예외)에 `components/admin/MarkdownPreview.tsx`를 더한다. 독자 화면과 같은 스타일 클래스(003 `updates` 본문)를 쓴다.
   - 충돌(409 `RELEASE_NOTE_REVISION_CONFLICT`): 입력 값을 지우지 않고 "다른 관리자가 먼저 저장했습니다. 최신 내용을 다시 불러온 뒤 고쳐 주세요"와 "최신 내용 열기"(새 탭 링크) 안내(AS5). 그 밖의 오류(`RELEASE_NOTE_VERSION_TAKEN`, 형식 `INVALID_FORMAT`, `contents.ko` `REQUIRED`)는 필드 옆에(003 `AdminFormErrors`).
   - 게시·게시 중단·삭제: 편집 화면의 별도 폼(`intent=publish|unpublish|delete`, 확인 대화상자는 JS가 있을 때 `confirm`, 없으면 확인 체크박스). 삭제 버튼은 `firstPublishedAt`이 없을 때만 보임(backend도 409 `RELEASE_NOTE_ONCE_PUBLISHED`). 게시 상태면 "독자에게 보기"(`/updates/v{version}`) 링크.
-  - 수정본: 번호·수정한 관리자·시각·당시 상태 목록, 수정본 보기는 언어판별 제목·Markdown 원문(읽기 전용)과 "이 내용으로 편집기 채우기"(편집 화면으로 값을 넘겨 다시 저장하면 새 수정본 — 되돌리기 API를 따로 만들지 않음, 결정 표 18번).
+  - 수정본: 번호·수정한 관리자·시각·당시 상태 목록, 수정본 보기는 언어판별 제목·Markdown 원문(읽기 전용)과 "이 내용으로 편집기 채우기"(편집 화면으로 값을 넘겨 다시 저장하면 새 수정본 — 되돌리기 API를 따로 만들지 않음, 결정 표 24번).
 - **Rationale**: 003이 API·검증·충돌·수정본을 모두 만들었으므로 006은 화면만. 미리보기가 독자 화면과 같은 변환(같은 `ReleaseNoteRenderer`)이라 FR-167 "독자 화면과 같은 변환 결과"를 만족.
 - **Alternatives**: 클라이언트 Markdown 변환(살균 규칙이 backend와 달라짐), 되돌리기 API 추가(spec에 없음).
 
