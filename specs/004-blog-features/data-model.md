@@ -141,7 +141,7 @@ erDiagram
 | visitors | INT | NOT NULL DEFAULT 0. 그날 방문자 수(같은 방문자 하루 1회, FR-067) |
 
 - 방문 기록 API가 (blogId, 방문자 키, 날짜) Caffeine 캐시로 하루 한 번만 통과시킨 뒤 `INSERT ... ON DUPLICATE KEY UPDATE visitors = visitors + 1`과 `blogs.total_visitors + 1`을 한 트랜잭션에서 한다. 방문자 키는 회원 ID 또는 익명 방문자 쿠키이며 저장하지 않는다(개인정보 없음). 봇은 세지 않는다.
-- 오늘·어제는 `blog.stats.time-zone` 날짜 기준이다. 통계 화면은 최근 30일만 쓰며, 보관 기간은 004 plan에서 정한다.
+- 오늘·어제는 `blog.stats.time-zone` 날짜 기준이다. 통계 화면은 최근 30일만 쓰며, 행은 지우지 않는다(004 plan 결정 표 15번: 방문이 있던 날만 행이 생기고 행이 작다. 보관 기간을 두게 되면 `visit_date` 인덱스와 함께 정한다).
 
 ## blog_exports
 블로그 백업 (FR-145).
