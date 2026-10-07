@@ -16,13 +16,13 @@ docker run -d --name blog-mysql -p 3306:3306 \
   mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci --ngram-token-size=2
 docker exec -i blog-mysql mysql -uroot -proot blog < blog/blog-docs/db/schema-mysql.sql
 
-# 개발용 메일 서버(Mailpit): SMTP localhost:1025, 받은 메일 확인 http://localhost:8025
+# 개발용 메일 서버(Mailpit): SMTP localhost:1025, 받은 메일 확인 http://localhost:8025 (계정 없이 받음)
 docker run -d --name blog-mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
 
 # backend (필수 프로퍼티는 모두 지정해야 기동된다. 아래 값은 개발용 자리표시자이며 실제 비밀값을 저장소·문서에 넣지 않는다)
 cd blog/blog-backend
 export BLOG_AUTH_JWT_SECRET=$(openssl rand -base64 48)
-export BLOG_CRYPTO_KEYS_1=$(openssl rand -base64 32)      # 개인정보 암호화 키(버전 1)
+export BLOG_CRYPTO_KEY_V1=$(openssl rand -base64 32)      # 개인정보 암호화 키(버전 1)
 export BLOG_CRYPTO_HASH_KEY=$(openssl rand -base64 32)    # 이메일 검색용 HMAC 키
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="\
  --spring.datasource.url=jdbc:mysql://localhost:3306/blog \
@@ -31,11 +31,10 @@ export BLOG_CRYPTO_HASH_KEY=$(openssl rand -base64 32)    # 이메일 검색용 
  --blog.media.upload-dir=$HOME/blog-data/media \
  --blog.media.temp-dir=$HOME/blog-data/media-tmp \
  --blog.media.thumbnail-dir=$HOME/blog-data/media-thumb \
- --blog.crypto.keys.1=$BLOG_CRYPTO_KEYS_1 \
+ --blog.crypto.keys.1=$BLOG_CRYPTO_KEY_V1 \
  --blog.crypto.active-key-version=1 \
  --blog.crypto.hash-key=$BLOG_CRYPTO_HASH_KEY \
  --blog.mail.host=localhost --blog.mail.port=1025 \
- --blog.mail.username=dev --blog.mail.password=dev \
  --blog.mail.from=no-reply@localhost --blog.mail.starttls=false \
  --blog.legal.terms-version=2026-10-06 \
  --blog.admin.bootstrap-super-admin-email=<관리자로 지정할 가입 이메일>"
