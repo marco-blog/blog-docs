@@ -191,4 +191,4 @@ erDiagram
 - 보관: `blog.admin.audit-retention` 기본 365일(30일 미만이면 기동 실패), 정리 작업 `blog.jobs.audit-purge-cron` 기본 매일 05:15, `blog.jobs.purge-batch-size`(500)씩 id를 모아 삭제(research A7). 리포지토리 `AdminAuditLogRepository`에는 여전히 삭제가 없고 정리 전용 `AdminAuditPurgeRepository`만 지운다.
 - 최고 관리자 최소 1명: 위 "001 테이블 변경"의 잠금 쿼리를 `admin/SuperAdminGuard`에 두고 006 권한 변경과 005 정지가 함께 쓴다. 추가로 최고 관리자는 자기 권한을 바꿀 수 없다(422 `CANNOT_CHANGE_OWN_ROLE`).
 - `release_notes`·`release_note_contents`·`release_note_revisions`: 003이 구현한 저장 규칙을 그대로 쓴다. 006은 화면만 더하고 저장 규칙을 바꾸지 않는다. 수정본 "되돌리기"는 수정본 내용으로 편집기를 채워 다시 저장(새 수정본)하는 방식이며 테이블 변경이 없다.
-- 선택 인덱스 제안 4개(`idx_users_created`, `idx_posts_published_at`, `idx_comments_status_created`, `idx_guestbook_entries_status_created`)는 plan.md "스키마 변경"에 정확한 DDL이 있고 Crowfoot `plan_migration` → marco 승인 전에는 만들지 않는다. 승인되면 이 문서와 [erd.md](../../erd.md)에 인덱스를 더한다.
+- 선택 인덱스 4개(`idx_users_created`, `idx_posts_published_at`, `idx_comments_status_created`, `idx_guestbook_entries_status_created`)는 2026-10-07 marco 승인으로 [migrations/0002](../../db/migrations/0002-add-query-indexes.sql)에서 반영했다. 인덱스 전체 목록은 [schema-mysql.sql](../../db/schema-mysql.sql)이 기준이다.

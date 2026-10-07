@@ -87,6 +87,8 @@
 
 ### marco 승인이 필요한 선택 DDL 제안 (지금 구현은 이것 없이 동작)
 
+**반영 (2026-10-07, marco 승인)**: 두 인덱스 모두 [migrations/0002](../../db/migrations/0002-add-query-indexes.sql)로 반영했다.
+
 아래 두 인덱스는 1.0 규모(회원 수천, 송신 기록 수천 행)에서는 없어도 되지만, 규모가 커지면 전체 훑기를 피하려고 필요하다. 넣기로 하면 [db/README.md](../../db/README.md) 절차(data-model·erd.md → Crowfoot 문서 → **Crowfoot `plan_migration` → marco 승인** → `apply_migration` → `migrations/NNNN-*.sql` → `schema-mysql.sql`·backend 테스트 스냅숏)를 따른다. 이 계획 단계에서는 Crowfoot 문서와 DB를 바꾸지 않았다(결정 표 31번).
 
 ```sql

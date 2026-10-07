@@ -75,6 +75,8 @@
 
 포털 목록은 5분 캐시를 거쳐 한 번 계산한 결과를 여러 요청이 나눠 쓰므로(FR-090이 허용하는 지연), 위 "(없음)" 쿼리도 회원 1만·글 10만 규모에서 캐시 갱신 1회당 수백 ms 안에 끝날 것으로 본다. 따라서 **인덱스 없이 구현하고 Polish의 성능 측정(tasks.md T126)에서 SC-012를 넘거나 `EXPLAIN`이 10만 행 이상 전체 스캔을 보일 때만** 아래 DDL을 marco에게 요청한다. 승인 전에는 구현하지 않으며, 승인되면 [db/README.md](../../db/README.md) 절차(data-model·erd.md → Crowfoot 문서 → `plan_migration` → **marco 승인(Crowfoot)** → `apply_migration` → `migrations/NNNN-*.sql` → `schema-mysql.sql`·backend 테스트 스냅숏)를 따른다.
 
+**반영 (2026-10-07, marco 승인)**: 제안 1은 `(…, id DESC)`로 늘려 [migrations/0002](../../db/migrations/0002-add-query-indexes.sql)로 반영했고, 주제 페이지용 `idx_posts_topic_status_visibility_published_id (topic_id, status, visibility, published_at DESC, id DESC)`도 함께 더했다. 제안 2·3은 T126 측정에서 필요하지 않아 넣지 않았다. 아래 백필은 [migrations/0003](../../db/migrations/0003-backfill-first-published-at.sql)에 있고 marco가 직접 실행한다.
+
 **제안 DDL (needs owner approval via Crowfoot)**
 
 ```sql
