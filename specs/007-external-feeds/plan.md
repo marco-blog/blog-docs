@@ -8,7 +8,7 @@
 
 ## Summary
 
-우리 서비스 밖 블로그의 RSS·Atom을 등록해 두면 backend가 주기적으로 가져와 **제목·요약(200자)·대표 이미지 썸네일·블로그 이름·원문 링크만** 저장하고, 포털(003) 최신 글과 주제 페이지에 "외부" 표시가 붙은 카드로 내부 글과 섞어 보여준다. 카드를 누르면 backend를 거쳐(클릭 수 집계) 원문으로 새 탭에서 이동한다. 등록 경로는 둘이다: 회원이 블로그 주소·피드 주소로 신청(미리보기 → 선택적 소유 인증 → 기본 주제 → 운영자 승인)하거나, 운영자가 콘솔에서 등록 근거와 함께 바로 등록한다(US1). 수집된 글의 주제는 주인 지정 → 매핑 규칙 → 자동 분류(신뢰도 0.7 이상) → 블로그 기본 주제 순으로 정하고(US2), 신뢰도가 낮은 글은 운영자 검수 목록으로 간다(US3). 주인은 언제든 등록을 해제하고, 운영자는 일시 중지·차단하며, 신고(005)로 들어온 삭제 요청을 처리한다(US4).
+우리 서비스 밖 블로그의 RSS·Atom을 등록해 두면 backend가 주기적으로 가져와 **제목·요약(200자)·대표 이미지 썸네일·블로그 이름·원문 링크만** 저장하고, 포털(003) 최신 글과 주제 페이지에 "외부" 표시가 붙은 카드로 내부 글과 섞어 보여준다. 카드를 누르면 backend를 거쳐(클릭 수 집계) 원문으로 새 탭에서 이동한다. 등록 경로는 둘이다: 회원이 블로그 주소·피드 주소로 신청(미리보기 → 선택적 소유 인증 → 기본 주제 → 운영자 승인)하거나, 운영자가 콘솔에서 등록 근거와 함께 바로 등록한다(US1). 수집된 글의 주제는 주인 지정 → 매핑 규칙 → 자동 분류(신뢰도 0.7 이상) → 블로그 기본 주제 순으로 정하고(US2), 신뢰도가 낮은 글은 운영자 검수 목록으로 간다(US3). 주인은 언제든 등록을 해제하면서 수집된 글을 남길지(포털에 계속 노출, 새 글 수집 없음) 지울지 고르고, 운영자는 일시 중지·차단하며, 신고(005)로 들어온 삭제 요청을 처리한다(US4).
 
 현재 코드(blog-backend·blog-front main, 001~003과 004 Phase 1~4 머지, 004 Phase 5~8은 `feat/004-rest`에서 구현 중, 005·006은 계획만)를 대조한 결과는 [research.md](./research.md) "현재 코드에서 확인한 것"에 있다. 요약하면 007 스키마 전체(테이블 6개, `portal_exclusions.external_post_id`, 인덱스·외래 키)가 이미 Crowfoot 문서 "blog 1.0"에 있고, 001이 수집 전용 스레드 풀(`feedFetchExecutor`, `ExternalFeedProperties`)과 스케줄러 풀 크기를 미리 만들어 두었으며, 002가 ROME 의존성을, 001이 썸네일 도구(Thumbnailator·TwelveMonkeys)를, 005 계획이 내부망 차단 도구(`OutboundUrlGuard`)와 신고 처리기 자리(`ReportTargetHandler`)를, 006 계획이 콘솔·블로그 관리의 메뉴 자리(숨김)와 관리자 API 행렬 테스트를 둔다.
 
@@ -41,7 +41,7 @@
 
 **Performance Goals**: 피드 하나 수집은 DB 쿼리 4회 이하 + 새 글당 쓰기 1~2회(기존 글은 guid·link 해시 IN 조회 1회로 한꺼번에 찾음). 포털 메인 계산은 003 대비 쿼리 +3회 이하(외부 최신·외부 인기 후보·외부 일별 클릭), 외부 카드 수와 무관. 주제 페이지 최신순은 두 출처 가벼운 행(id·발행 시각) 조회 2회 + 카드 조회 2회. 클릭 이동은 쿼리 2회(글 확인, 집계 upsert). 수집 주기 30분 기준 새 글이 1시간 안에 포털에 나옴(SC-018)
 
-**Constraints**: 외부 글 본문 저장·노출 0건(SC-021), 내부망·서비스 자신 주소로의 서버 요청 0건(FR-116, Edge Cases), 피드 요약·제목의 HTML 실행 0건, 인증 없는 블로그 글의 썸네일 노출 0건(FR-128), 해제·차단·삭제 요청 처리·탈퇴 후 5분 안 포털에서 사라짐(SC-020, 실제로는 커밋 직후 포털 캐시 무효화), 외부 글이 검색·RSS·사이트맵에 0건(FR-125), 관리자 API 비관리자 404(006 FR-097), 관리자 변경 작업 기록 누락 0건(006 SC-017), 커버리지 80%, 번역 누락 0건, N+1 금지, E2E에서 인터넷 요청 0건
+**Constraints**: 외부 글 본문 저장·노출 0건(SC-021), 내부망·서비스 자신 주소로의 서버 요청 0건(FR-116, Edge Cases), 피드 요약·제목의 HTML 실행 0건, 인증 없는 블로그 글의 썸네일 노출 0건(FR-128), 해제(글 삭제 선택)·차단·삭제 요청 처리·탈퇴 후 5분 안 포털에서 사라짐(SC-020, 실제로는 커밋 직후 포털 캐시 무효화), 글을 남기고 해제한 블로그의 해제 뒤 새 글 포털 노출 0건, 외부 글이 검색·RSS·사이트맵에 0건(FR-125), 관리자 API 비관리자 404(006 FR-097), 관리자 변경 작업 기록 누락 0건(006 SC-017), 커버리지 80%, 번역 누락 0건, N+1 금지, E2E에서 인터넷 요청 0건
 
 **Scale/Scope**: 새 회원 API 11개(미리보기, 인증 코드 발급·확인, 내 외부 블로그 목록·신청·조회·기본 주제 변경·넘겨받기·해제, 수집된 글 목록·글 주제 변경), 공개 API 1개(클릭 이동), 새 관리자 API 21개(외부 블로그 목록·직접 등록·조회·기본 주제 변경·승인·거절·일시 중지·재개·차단, 수집된 글 목록, 외부 글 내림, 외부 글 포털 제외·해제, 검수 목록·확정·일괄 확정, 분류 현황, 매핑 규칙 목록·추가·수정·삭제), 운영 설정 키 3개, 003 API 확장 3곳(`PortalCard.source`·`visitUrl`·`externalBlog`, `/portal/latest`·`/topics/{slug}/posts`의 `source` 필터), 005 신고 대상 2종 처리기, 002 알림 종류 3개. 새 화면 10개(블로그 관리 외부 블로그 목록·신청·상세, 콘솔 외부 블로그 목록·직접 등록·상세·검수·분류 현황·매핑 규칙·설정), 001~006 화면 변경 6곳(포털 카드·최신 글·주제 페이지 필터, 알림 문구, 신고 레이어·권리 침해 양식의 외부 대상, 콘솔·블로그 관리 메뉴 켜기, `/manage/external-blogs` 진입)
 
@@ -51,7 +51,7 @@
 
 | 원칙 | 확인 | 결과 |
 |---|---|---|
-| I. 스펙이 먼저다 | spec.md 확정(NEEDS CLARIFICATION 0개, checklist 통과). 이 plan은 FR-109~129, FR-157, SC-018~021을 다룬다. 스펙이 계획 단계로 미룬 것(썸네일 저장 방식, 자동 분류 방식)과 모호한 점(해제 시 "글 유지"의 포털 노출, 미인증 신청자의 권한, 검수 대상 범위)은 tasks.md "구현 전 결정 사항"에 기본값으로 기록(marco "묻지 말고 진행"). spec과 충돌할 수 있는 해석 1건(결정 표 24번)은 marco 확인 필요로 표시 | 통과 |
+| I. 스펙이 먼저다 | spec.md 확정(NEEDS CLARIFICATION 0개, checklist 통과). 이 plan은 FR-109~129, FR-157, SC-018~021을 다룬다. 스펙이 계획 단계로 미룬 것(썸네일 저장 방식, 자동 분류 방식)과 모호한 점(해제 시 "글 유지"의 포털 노출, 미인증 신청자의 권한, 검수 대상 범위)은 tasks.md "구현 전 결정 사항"에 기본값으로 기록(marco "묻지 말고 진행"). 해제 시 "글 유지"는 marco가 2026-10-07에 "남기면 포털에 계속 노출"로 정했고(결정 표 24번) spec US4 AS1·FR-126·SC-020을 그에 맞게 고쳤다 | 통과 |
 | II. 세 저장소, 두 실행 파트 | 수집·분류·썸네일은 backend 프로세스 안(`@Scheduled` + 전용 스레드 풀), 큐·워커·외부 AI 서비스 없음. front는 REST API만 호출. E2E 피드 스텁은 시험 도구일 뿐 실행 파트가 아님 | 통과 |
 | III. 테스트 우선·커버리지 | 각 스토리의 테스트 작업이 구현보다 앞섬, 인수 시나리오마다 테스트(tasks.md). 외부 HTTP는 로컬 테스트 서버, 내부망 판정은 주입한 이름 해석기. H2 + 쿼리 수 확인, MySQL 전용은 생성 컬럼 UNIQUE 1개, Testcontainers 없음, 80% 게이트 유지. E2E는 CI에서 실제 backend와 로컬 피드 스텁으로 돈다 | 통과 |
 | IV. 보안과 공개 범위 | SSRF: 모든 외부 요청이 `SafeHttpFetcher` 한 곳(매 리다이렉트마다 주소 검사, 크기·시간·횟수 제한), 미리보기·인증 확인은 로그인 회원만 + 속도 제한. XXE: ROME `allowDoctypes=false`. XSS: 외부 제목·요약은 태그를 지운 일반 텍스트로만 저장·출력, 링크는 http/https만 저장. 클릭 이동은 저장된 원문 주소로만(열린 리다이렉트 없음). 관리 권한: 회원 API는 `member_id` 본인만(아니면 404), 글 주제·기본 주제 변경은 소유 인증된 주인만(403). 외부 글은 001 노출 매트릭스 대상이 아니며 포털에만(FR-125) | 통과 |
@@ -70,6 +70,9 @@
 |---|---|---|
 | 수집할 차례인 피드 고르기 | `idx_external_blogs_status_next_fetch` (status, next_fetch_at) | `status='ACTIVE' AND next_fetch_at <= now LIMIT 50`, 고른 행은 `next_fetch_at`을 임대 시각으로 미룸(research E1·E5) |
 | 같은 피드 중복 등록 막기 | `uk_external_blogs_active_feed_hash`(생성 컬럼 UNIQUE), 사전 조회는 `idx_external_blogs_feed_url_hash` | 거절·해제된 등록은 생성 컬럼이 NULL이라 다시 신청 가능 |
+| 해제할 때 글 남기기·삭제 선택(결정 표 24번) | `external_blogs.status`(RELEASED), `external_posts` 행 존재·`status` | 선택을 저장하는 컬럼이 필요 없다. 남기면 RELEASED 등록에 `ACTIVE` 글 행이 남고, 삭제하면 행이 없다. 탈퇴로 해제된 등록의 글은 `REMOVED`(`MEMBER_WITHDRAWN`)라 노출 조건에 블로그 상태 RELEASED만 더하면 된다 |
+| 다시 등록 때 남긴 글 이어받기 | `idx_external_blogs_feed_url_hash`로 같은 피드의 RELEASED 등록 찾기 → `idx_external_posts_blog_published` 앞 컬럼 `external_blog_id`로 `UPDATE external_posts SET external_blog_id = ?` | 새 등록은 첫 수집 전이라 `uk_external_posts_blog_guid_hash`·`uk_external_posts_blog_link_hash`와 충돌 없음 |
+| 해제 등록의 내린 글 정리(30일) | `external_posts.updated_at` + `idx_external_posts_blog_published`(RELEASED 등록 id 목록으로) | 정리 작업 하루 1회, 인덱스 추가 없음 |
 | 회원별 3개 한도 | `users` PK `FOR UPDATE` + `idx_external_blogs_member_status` (member_id, status) | 001 R28 방식 |
 | 회원의 외부 블로그 목록 | `idx_external_blogs_member_status` | |
 | 관리자 목록(상태별, 신청 대기 먼저) | `idx_external_blogs_status_next_fetch` 앞 컬럼 `status` + `created_at` 정렬 | 상태별 행 수가 작아 정렬 비용 작음. 검색어는 제목·피드 주소 `LIKE`(관리자 화면, 1.0 규모) |
@@ -160,7 +163,7 @@ blog-backend/src/main/java/net/java21/blog/backend/
 │   │                           #   PortalMerge(두 출처 합치기·커서), ExternalVisitController·ExternalClickService(중복 제거, upsert)
 │   ├── report/                 # ExternalPostReportHandler·ExternalBlogReportHandler (005 ReportTargetHandler 구현)
 │   ├── member/                 # MemberExternalBlogController·Service(신청·조회·기본 주제·해제·넘겨받기·글 주제), PreviewService
-│   ├── job/                    # LinkCheckJob(주 1회 원문 점검), ExternalCleanupJob(만료 인증 코드·고아 썸네일·해제 30일 지난 글)
+│   ├── job/                    # LinkCheckJob(주 1회 원문 점검), ExternalCleanupJob(만료 인증 코드·고아 썸네일·해제 등록에서 내린 지 30일 지난 글)
 │   ├── event/                  # MemberWithdrawnListener(FR-157), ExternalPortalChanged(커밋 후 포털 캐시 무효화)
 │   ├── repository/             # 엔티티별 Spring Data + QueryDSL 조회 리포지토리
 │   └── dto/
@@ -214,7 +217,7 @@ spec의 스토리 번호와 우선순위를 그대로 쓴다(결정 표 1번).
 | 1 | US1 등록과 인증 (P1) 🎯 MVP | 미리보기, 인증 코드 발급·확인, 회원 신청(3개 한도·중복 거부), 운영자 승인·거절·직접 등록, 넘겨받기, 수집 스케줄러·수집기(기본 주제로 저장), 블로그 관리·콘솔 화면 | FR-109~113, FR-116, FR-128(썸네일 받기 조건), FR-129(넘겨받기) |
 | 2 | US2 포털 노출 (P2) | 포털 최신·주제 페이지·인기에 외부 글 합치기, 카드 "외부" 표시·새 탭 이동·클릭 집계, `source` 필터, 주제 자동 숨김 합산, 매핑 규칙·자동 분류·기본 주제 순 결정, 썸네일 제공, 원문 링크 점검, 검색·RSS·사이트맵 제외 확인 | FR-114, FR-117(링크 점검), FR-118, FR-119, FR-123~125, FR-128, SC-018, SC-021 |
 | 3 | US3 분류 개선과 검수 (P3) | 주인의 글 주제 변경, 검수 목록·확정·일괄 확정, 분류 현황(정확도·분포·대기 수), 매핑 규칙 관리 | FR-119~122, SC-019 |
-| 4 | US4 해제와 운영 (P4) | 해제(글 삭제 선택), 일시 중지·재개·차단, 외부 글 내림·포털 제외, 신고 처리기 2종(005), 7일 연속 실패 자동 중지·알림, 탈퇴 연동 | FR-117, FR-126, FR-127, FR-129(삭제 요청), FR-157, SC-020 |
+| 4 | US4 해제와 운영 (P4) | 해제(글 남기기·삭제 선택, 남긴 글 나중 삭제), 일시 중지·재개·차단, 외부 글 내림·포털 제외, 신고 처리기 2종(005), 7일 연속 실패 자동 중지·알림, 탈퇴 연동 | FR-117, FR-126, FR-127, FR-129(삭제 요청), FR-157, SC-020 |
 
 각 단계는 끝날 때 해당 스토리의 Independent Test를 E2E로 통과해야 한다. US1의 Independent Test 마지막 문장("포털에 글이 나오는지 확인")은 US2가 끝나야 확인되므로, US1 체크포인트는 "수집된 글이 회원·관리자 화면의 수집된 글 목록에 나옴"까지, 포털 확인은 US2 체크포인트에서 한다(결정 표 1번). 같은 파일(`ErrorCode`, `AuditActions`, `SettingKey`, `NotificationType`, `PortalService`, `TopicPostService`, `PopularityCalculator`, `PortalCardResponse`, `models.ts`, `PortalCard.tsx`, `routes.ts`, `admin/links.ts`, `manage/links.ts`, `errors.json`, `playwright.config.ts`, `tests/e2e/support/backend.ts`, 두 workflow)을 고치는 작업은 순서대로 머지한다.
 

@@ -179,7 +179,7 @@
 
 ## E13. 포털 합치기 (FR-123, FR-124, 003 FR-080·086·093·147)
 - **Decision**: 003 쿼리는 그대로 두고 007이 `ExternalPortalSource`(인터페이스, 003 `BlogPenaltyPolicy`처럼 빈이 없으면 빈 결과)를 003 서비스에 붙인다.
-  - 외부 글의 포털 노출 조건(`ExternalPortalExposure`): `external_posts.status = ACTIVE` AND `external_blogs.status IN (ACTIVE, PAUSED, STOPPED)`(일시 중지·자동 중지는 이미 수집된 글을 그대로 둠 — data-model, BLOCKED·RELEASED·PENDING·REJECTED는 안 보임) AND 포털 제외(`portal_exclusions.external_post_id`) 없음 AND `published_at <= now` AND 주제(소분류와 그 대분류)가 운영자 숨김이 아님. 003 FR-088의 가입 24시간·본문 200자 조건과 블로그 포털 노출 설정(FR-089)은 적용하지 않음(FR-123).
+  - 외부 글의 포털 노출 조건(`ExternalPortalExposure`): `external_posts.status = ACTIVE` AND `external_blogs.status IN (ACTIVE, PAUSED, STOPPED, RELEASED)`(일시 중지·자동 중지는 이미 수집된 글을 그대로 둠 — data-model. RELEASED는 "글 남기기"로 해제한 경우다: "삭제"를 골랐으면 글 행이 없고, 탈퇴로 해제된 등록의 글은 `REMOVED`라 따로 거를 필요가 없다 — E16, 결정 표 24번. BLOCKED·PENDING·REJECTED는 안 보임) AND 포털 제외(`portal_exclusions.external_post_id`) 없음 AND `published_at <= now` AND 주제(소분류와 그 대분류)가 운영자 숨김이 아님. 003 FR-088의 가입 24시간·본문 200자 조건과 블로그 포털 노출 설정(FR-089)은 적용하지 않음(FR-123).
   - 카드: 003 `PortalCard`에 `source: "INTERNAL" | "EXTERNAL"`(기존 응답은 `INTERNAL`), `visitUrl`(외부만 `/api/v1/external-posts/{id}/visit`), `externalBlog: { id, title, siteHost }`(외부만)를 더한다. 외부 카드는 `blog`가 `{ handle: null, title: 외부 블로그 이름 }`, `author: null`, `likeCount`·`commentCount` 0, `thumbnailUrl`은 E7 규칙. 카드 id는 출처마다 따로라 front 키는 `${source}-${id}`.
   - 메인 최신(`/portal`, `/portal/latest`): 내부 최신 `LATEST_WINDOW + 1`행 + 외부 최신 같은 수를 읽어 (발행 시각 내림, 같으면 출처 INTERNAL 먼저, 같으면 id 내림)으로 합친 뒤 `PerBlogCap`(키 `P:{blogId}`·`E:{externalBlogId}`, 블로그당 2편 — FR-123이 003 FR-080을 그대로 적용)으로 20편. 커서는 003 형식에 출처 `s`("P"/"E")를 더한다(`s`가 없는 옛 커서는 "P"로 읽음). 커서 다음 읽기는 각 출처에서 "(시각, 출처, id)가 커서보다 뒤"인 행.
   - 메인 인기: `PopularitySnapshot.Entry`에 `source`를 더하고, 외부 점수 = 최근 7일(`portal.popular-window`) 클릭 합 × `external.score-weight`(기본 1.0) × 003 감쇠 `2^(-발행 후 시간/halfLifeHours)`. 외부 블로그는 신고 감점(005) 대상이 아니다(차단·내림으로 처리). 내부·외부를 한 목록에서 점수순 정렬(FR-124 "같은 점수 체계"). 가중치 기본값 1.0은 "클릭 1번 = 내부 글 조회 1번 × (조회 가중치 / 1)"이 아니라 그대로 곱하므로, 내부 조회 가중치(003 기본 1)와 같은 크기다. 운영자가 0~10으로 조정한다.
@@ -199,19 +199,24 @@
 - **Alternatives**: `POST` 비콘 + 직접 링크(JS 필요, 원칙 V·SSR 정신에 어긋나고 차단기에 막힘), 원문 주소를 쿼리로 받는 일반 리다이렉트(열린 리다이렉트).
 
 ## E15. 정리 작업 (FR-110, FR-126)
-- **Decision**: `ExternalCleanupJob`(`blog.external.cleanup-cron`, 기본 매일 05:30): (1) `expires_at`이 7일 지난 인증 코드 행 삭제(성공한 행 포함 — 결과는 `external_blogs.ownership_verified`에 있음), (2) RELEASED가 된 지 30일 지난 등록의 남은 외부 글 삭제(결정 표 24번, 검수·일별 클릭은 CASCADE, 포털 제외 행은 먼저 지움), (3) 90일 지난 `external_post_daily_clicks` 삭제, (4) 주 1회(월요일 실행분) `thumbnail-dir/external/` 아래 DB에 없는 키의 파일 삭제. 한 번에 500건씩.
+- **Decision**: `ExternalCleanupJob`(`blog.external.cleanup-cron`, 기본 매일 05:30): (1) `expires_at`이 7일 지난 인증 코드 행 삭제(성공한 행 포함 — 결과는 `external_blogs.ownership_verified`에 있음), (2) RELEASED 등록에 남은 `REMOVED` 외부 글 중 내린 지(`external_posts.updated_at`) `release-retention`(30일)이 지난 것 삭제(탈퇴·신고 처리 근거 보관 기간, 결정 표 24번. 주인이 남긴 `ACTIVE` 글은 지우지 않음, 검수·일별 클릭은 CASCADE, 포털 제외 행은 먼저 지움), (3) 90일 지난 `external_post_daily_clicks` 삭제, (4) 주 1회(월요일 실행분) `thumbnail-dir/external/` 아래 DB에 없는 키의 파일 삭제. 한 번에 500건씩.
 - **Rationale**: 001 R26의 정리 작업들과 같은 모양(`blog.jobs.*` 대신 `blog.external.*`에 모아 007 설정을 한 곳에).
 - **Alternatives**: 작업마다 따로 cron(설정 4개 늘어남).
 
 ## E16. 해제·차단·탈퇴와 SC-020 (FR-126, FR-127, FR-157)
-- **Decision**:
-  - 해제(관리 회원, ACTIVE·PAUSED·STOPPED·PENDING → RELEASED): 수집 즉시 중지(`next_fetch_at = NULL`). **포털에서는 선택과 관계없이 바로 사라진다**(노출 조건이 블로그 상태를 봄, E13). "수집된 글도 삭제"를 고르면 같은 트랜잭션에서 글 행을 지우고(포털 제외 행 먼저, 검수·클릭은 CASCADE) 커밋 후 썸네일 파일을 지운다. 고르지 않으면 글 행을 30일 보관한 뒤 정리 작업이 지운다(그동안 신고·권리 침해 처리 근거로만 관리자에게 보임).
-  - 차단(관리자, 모든 상태 → BLOCKED, 사유 필수): 모든 외부 글 `REMOVED`(`BLOG_BLOCKED`), `next_fetch_at = NULL`. 차단된 피드는 `active_feed_hash`가 남아 다시 신청할 수 없다(409 `EXTERNAL_BLOG_ALREADY_REGISTERED`, `claimable: false`).
+- **Decision** (결정 표 24번, marco 2026-10-07 확정):
+  - 해제(관리 회원, ACTIVE·PAUSED·STOPPED·PENDING → RELEASED, `deletePosts` 필수): 수집 즉시 중지(`next_fetch_at = NULL`). 해제 뒤에는 새 글을 수집하지 않는다.
+    - **글 남기기**(`deletePosts: false`): 글 행과 상태를 그대로 둔다. 노출 조건이 RELEASED를 포함하므로(E13) 이미 수집된 `ACTIVE` 글은 포털에 계속 나온다. 포털 캐시 무효화는 하지 않아도 되지만 상태 변경이라 `PortalChangedEvent`를 똑같이 낸다(카드 내용은 같음). 썸네일 노출은 지금처럼 `ownership_verified`로 판단. 남긴 글에는 보관 기한이 없다(주인이 지우거나 운영자가 내릴 때까지).
+    - **글 삭제**(`deletePosts: true`): 같은 트랜잭션에서 글 행을 지우고(포털 제외 행 먼저, 검수·클릭은 CASCADE) 커밋 후 썸네일 파일을 지운다. **30일 보관 없이 즉시 삭제**(주인의 삭제 의사가 우선. 그 글에 걸린 처리 중 신고는 005 화면에 "대상 없음"으로 나와 운영자가 종결).
+    - **남긴 글 나중에 삭제**: RELEASED 등록에 같은 API를 `deletePosts: true`로 다시 부르면 남은 글을 위와 같이 지운다(상태는 RELEASED 그대로, `false`면 409 `EXTERNAL_BLOG_STATE_CONFLICT`). 해제 뒤 관리 회원(`member_id` 유지)은 조회와 이 삭제만 할 수 있고, 기본 주제·글 주제 변경은 409 `EXTERNAL_BLOG_STATE_CONFLICT`.
+  - 다시 등록(같은 `feed_url_hash`의 새 등록이 승인·직접 등록으로 ACTIVE가 될 때): 같은 트랜잭션에서 그 피드의 RELEASED 등록에 남은 글 중 `MEMBER_WITHDRAWN`이 아닌 것(`ACTIVE`와 신고·운영자·링크 점검으로 내린 `REMOVED`)의 `external_blog_id`를 새 등록으로 바꾼다. 새 등록은 첫 수집 전이라 글이 없어 UNIQUE(external_blog_id, guid_hash·link_hash)와 충돌하지 않고, 활성 시점마다 옮기므로 한 피드에서 옮길 글을 가진 RELEASED 등록은 많아야 하나다. 첫 수집이 같은 글을 새로 만들지 않고 갱신하며(E5), 주제·클릭 수·내림 결정이 이어진다. 남긴 글의 관리 권한은 새 등록의 관리 회원으로 넘어간다(이전 주인이 지우려면 소유 인증으로 넘겨받기). 탈퇴로 내린 글은 옮기지 않고 정리 작업이 지운다(E15).
+  - 차단(관리자, BLOCKED가 아닌 모든 상태 → BLOCKED, 사유 필수): 그 등록의 모든 외부 글 `REMOVED`(`BLOG_BLOCKED`), `next_fetch_at = NULL`. **같은 피드의 RELEASED 등록에 남은 `ACTIVE` 글도 함께 `REMOVED`(`BLOG_BLOCKED`)**(차단은 피드 단위 판단). RELEASED 등록 자체도 차단할 수 있지만(남긴 글을 내리고 재신청을 막음), 같은 피드에 거절·해제가 아닌 다른 등록이 있으면 `active_feed_hash` UNIQUE와 겹치므로 409 `EXTERNAL_BLOG_STATE_CONFLICT`(`params: { status, action, activeExternalBlogId }`) — 그 등록을 차단하면 남긴 글도 함께 내려간다. 차단된 피드는 `active_feed_hash`가 남아 다시 신청할 수 없다(409 `EXTERNAL_BLOG_ALREADY_REGISTERED`, `claimable: false`).
   - 일시 중지·재개: ACTIVE ↔ PAUSED, STOPPED → ACTIVE(재개 시 `consecutive_failures = 0`, `first_failed_at = NULL`, `next_fetch_at = now`). 이미 수집된 글은 그대로 노출.
-  - 탈퇴(FR-157): 001 `AccountService.withdraw`가 같은 트랜잭션에서 `MemberWithdrawnEvent(userId)`를 발행하고, 007 리스너(`@EventListener`, 동기)가 그 회원의 거절·해제가 아닌 등록을 모두 RELEASED로 바꾸고 외부 글을 `REMOVED`(`MEMBER_WITHDRAWN`)로 바꾼다. 실제 주인은 이후 새로 신청할 수 있다(`active_feed_hash` NULL).
-  - 모든 경우 커밋 후 `PortalChangedEvent` → 포털 캐시 무효화 → 다음 요청부터 사라짐(SC-020 "5분"보다 빠름). 상태 전이가 맞지 않으면 409 `EXTERNAL_BLOG_STATE_CONFLICT`(`params: { status, action }`).
-- **Rationale**: SC-020이 "등록 해제 후 5분 안에 포털에서 사라진다"를 측정 기준으로 둔다. US4 AS1의 "글도 삭제를 고르면 포털에서 사라진다"는 삭제 여부가 데이터를 지우는지의 선택으로 읽었다(결정 표 24번 — marco 확인 필요).
-- **Alternatives**: "글 유지"면 포털에 계속 노출(SC-020과 충돌, 해제한 주인 의사와도 어긋남), 해제 때 항상 삭제(신고 처리 중인 글의 근거가 사라짐).
+  - 탈퇴(FR-157): 001 `AccountService.withdraw`가 같은 트랜잭션에서 `MemberWithdrawnEvent(userId)`를 발행하고, 007 리스너(`@EventListener`, 동기)가 그 회원의 거절·해제가 아닌 등록을 모두 RELEASED로 바꾸고, **그 회원의 모든 등록(이미 글을 남기고 해제한 것 포함)**의 `ACTIVE` 외부 글을 `REMOVED`(`MEMBER_WITHDRAWN`)로 바꾼다. 실제 주인은 이후 새로 신청할 수 있다(`active_feed_hash` NULL).
+  - 신고(E17): 남긴 글은 포털 노출 중이므로 `EXTERNAL_POST` 신고 대상이고, 남긴 `ACTIVE` 글이 있는 RELEASED 등록은 `EXTERNAL_BLOG` 신고 대상이다(조치 `BLOCK_EXTERNAL_BLOG`는 위 차단 규칙).
+  - 포털에서 사라지는 경우(글 삭제 해제·남긴 글 삭제·차단·내림·탈퇴)는 모두 커밋 후 `PortalChangedEvent` → 포털 캐시 무효화 → 다음 요청부터 사라짐(SC-020 "5분"보다 빠름). 상태 전이가 맞지 않으면 409 `EXTERNAL_BLOG_STATE_CONFLICT`(`params: { status, action }`).
+- **Rationale**: marco가 해제할 때 주인이 글을 남길지 고르게 하고, 남기면 포털에 계속 보이도록 정했다(spec US4 AS1, FR-126, SC-020 수정). 남긴 글 상태를 따로 저장하지 않아도 "글 행이 있는 RELEASED 등록 = 남긴 글"로 표현되므로 스키마 변경이 없다. 다시 등록할 때 옮기지 않으면 첫 수집이 최근 30일 글을 새 행으로 만들어 포털에 같은 글이 두 번 나온다.
+- **Alternatives**: 해제하면 선택과 관계없이 포털에서 내림(이전 기본값, marco가 바꿈), 남긴 글을 다시 등록 때 숨김(30일보다 오래된 글이 사라짐), "글 유지" 여부 컬럼 추가(행 존재로 충분, DDL 필요), 삭제 선택에도 30일 보관(주인 의사와 어긋남).
 
 ## E17. 신고 연동 (FR-127, FR-129, 005 FR-040·041)
 - **Decision**: 005 `ReportTargetHandler` 두 구현:
