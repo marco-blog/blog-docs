@@ -13,11 +13,11 @@
 | 영역 | 이미 있음(다른 스펙) | 006이 만드는 것 |
 |---|---|---|
 | 블로그 관리(US1) | 001: `/:handle/manage` 레이아웃·블로그 전환·`/manage` 진입점·대시보드·글 관리(필터·검색·일괄 작업·휴지통)·카테고리·댓글·설정·noindex. 002: 피드 설정. 004: 방명록·꾸미기·통계·대시보드 방문자·방명록(Phase 5~8: 백업·차단·보호/예약 필터) | FR-099 순서의 메뉴 정의 한 곳(`app/manage/links.ts`, 스펙별 공개 여부), 관리·콘솔 응답의 `X-Robots-Tag: noindex`(FR-098 보강), **모든 `/blogs/{h}/manage/**` API의 주인 외 거부 행렬 테스트**(AS5), Independent Test·SC-016 E2E |
-| 콘솔 구조·운영(US2) | 003: `/admin` 레이아웃·`AdminAccessFilter`(DB의 현재 권한, 아니면 404)·주제·포털 추천·포털 제외·포털 설정·회원별 블로그 한도 API. 005(계획): 회원 검색·상세·정지, 신고, 콘텐츠 숨김 API·숨긴 글 목록, 스팸 방어. 007: 외부 블로그 관리 | 상단 메뉴 **"시스템 관리"** 링크(지금 없음), FR-102 순서의 콘솔 메뉴(스펙별 공개 여부), **콘솔 대시보드**(FR-103, `/admin` 첫 화면), **콘텐츠 관리 검색**(글·댓글·방명록 전체 검색과 숨김 상태 목록, 숨김·해제는 005 API), **예약어**(읽기 전용), **서비스 설정**(읽기 전용), **모든 `/api/v1/admin/**` API의 비관리자 404 행렬 테스트**(SC-015) |
-| 작업 기록·권한(US3) | 003: `admin_audit_logs` 쓰기(`AdminAuditService`, 같은 트랜잭션), 첫 최고 관리자 지정(`SuperAdminBootstrap`) | **작업 기록 조회 API·화면**(FR-106), **1년 보관 정리 작업**, **관리자 권한 부여·회수**(FR-105, 최고 관리자만, 마지막 최고 관리자 보호), **모든 관리자 변경 API가 기록을 남기는지 강제하는 테스트**(SC-017) |
+| 콘솔 구조·운영(US2) | 001: `AdminAccessFilter`(DB의 현재 권한, 아니면 404)·회원별 블로그 한도 API. 003: `/admin` 레이아웃·주제·포털 추천·포털 제외·포털 설정. 005(계획): 회원 검색·상세·정지, 신고, 콘텐츠 숨김 API·숨긴 글 목록, 스팸 방어. 007: 외부 블로그 관리 | 상단 메뉴 **"시스템 관리"** 링크(지금 없음), FR-102 순서의 콘솔 메뉴(스펙별 공개 여부), **콘솔 대시보드**(FR-103, `/admin` 첫 화면), **콘텐츠 관리 검색**(글·댓글·방명록 전체 검색과 숨김 상태 목록, 숨김·해제는 005 API), **예약어**(읽기 전용), **서비스 설정**(읽기 전용), **모든 `/api/v1/admin/**` API의 비관리자 404 행렬 테스트**(SC-015) |
+| 작업 기록·권한(US3) | 001: `admin_audit_logs` 쓰기(`AdminAuditService`, 같은 트랜잭션, 003이 `recordKey` 추가), 첫 최고 관리자 지정(`SuperAdminBootstrap`) | **작업 기록 조회 API·화면**(FR-106), **1년 보관 정리 작업**, **관리자 권한 부여·회수**(FR-105, 최고 관리자만, 마지막 최고 관리자 보호), **모든 관리자 변경 API가 기록을 남기는지 강제하는 테스트**(SC-017) |
 | 릴리스 노트(US4) | 003: 관리 API 9개(`/api/v1/admin/release-notes/**`)와 독자 화면 `/updates/**`(결정 4번 "화면은 006") | **릴리스 노트 관리 화면**(`/admin/release-notes/**`: 목록·만들기·수정(언어별 탭)·미리보기·게시·게시 중단·삭제·수정본) |
 
-기술 접근: 새 테이블·컬럼 없이 001 `users.role`·`users.time_zone`, 003 `admin_audit_logs`·릴리스 노트 테이블, 001~005 콘텐츠 테이블을 읽는다. 대시보드는 쿼리 6회를 관리자 시간대별 Caffeine 캐시(5분, FR-103의 "최대 5분 지연")로 감싸고, 처리 대기 신고 수는 003 `BlogPenaltyPolicy`처럼 인터페이스 자리(`PendingReportCounter`)를 두어 005가 채운다. 권한 변경은 001 data-model의 규칙대로 `SELECT ... FOR UPDATE`로 최고 관리자 행을 잠근 뒤 남는 수를 확인하고, 반영은 003 `AdminAccessFilter`가 요청마다 DB를 읽으므로 따로 할 일이 없다. SC-015·SC-017은 "테스트를 하나씩 쓴다"가 아니라 **Spring MVC 매핑 목록을 훑는 행렬 테스트**로 강제해, 이후 스펙이 관리자 API를 더해도 빠지지 않게 한다. **새 라이브러리 없음, 필수 스키마 변경 없음**(아래 "스키마 변경"에 marco 승인이 필요한 선택 인덱스 제안 4개). 세부 근거는 [research.md](./research.md).
+기술 접근: 새 테이블·컬럼 없이 001 `users.role`·`users.time_zone`, 006 data-model의 `admin_audit_logs`(001이 쓰기 구현)·릴리스 노트 테이블(003이 구현), 001~005 콘텐츠 테이블을 읽는다. 대시보드는 쿼리 6회를 관리자 시간대별 Caffeine 캐시(5분, FR-103의 "최대 5분 지연")로 감싸고, 처리 대기 신고 수는 003 `BlogPenaltyPolicy`처럼 인터페이스 자리(`PendingReportCounter`)를 두어 005가 채운다. 권한 변경은 001 data-model의 규칙대로 `SELECT ... FOR UPDATE`로 최고 관리자 행을 잠근 뒤 남는 수를 확인하고, 반영은 001 `AdminAccessFilter`가 요청마다 DB를 읽으므로 따로 할 일이 없다. SC-015·SC-017은 "테스트를 하나씩 쓴다"가 아니라 **Spring MVC 매핑 목록을 훑는 행렬 테스트**로 강제해, 이후 스펙이 관리자 API를 더해도 빠지지 않게 한다. **새 라이브러리 없음, 필수 스키마 변경 없음**(아래 "스키마 변경"에 marco 승인이 필요한 선택 인덱스 제안 4개). 세부 근거는 [research.md](./research.md).
 
 ## Technical Context
 
@@ -50,7 +50,7 @@
 | I. 스펙이 먼저다 | spec.md 확정(NEEDS CLARIFICATION 0개, checklist 통과). 이 plan은 FR-096~106, FR-160, FR-167·168, SC-015~017 중 다른 스펙이 맡지 않은 몫만 다룬다(위 Summary 표, research A1). 메뉴 표의 "출처"가 다른 스펙인 기능(회원 정지·신고·스팸은 005, 외부 블로그는 007, 방명록·백업·차단은 004)은 만들지 않고 메뉴 자리만 맞춘다. 모호한 점은 tasks.md "구현 전 결정 사항"에 기본값으로 기록(marco "묻지 말고 진행") | 통과 |
 | II. 세 저장소, 두 실행 파트 | 두 관리 화면 모두 front 안의 화면(spec Assumptions), 별도 앱·도메인 없음. 대시보드 캐시·작업 기록 정리 작업은 backend 프로세스 안(Caffeine, `@Scheduled`). front는 REST API만 호출 | 통과 |
 | III. 테스트 우선·커버리지 | 각 스토리의 테스트 작업이 구현보다 앞섬, 인수 시나리오마다 테스트(tasks.md). SC-015·SC-017은 매핑 행렬 테스트로 앞으로 더해질 API까지 강제. H2 + 쿼리 수 확인, MySQL 전용은 FULLTEXT 1개, Testcontainers 없음, 80% 게이트 유지. E2E는 CI에서 실제 backend로 돈다 | 통과 |
-| IV. 보안과 공개 범위 | 콘솔은 003 `AdminAccessFilter`(요청마다 DB의 현재 권한·상태, 아니면 404) 한 곳. 최고 관리자 전용 동작(권한 변경, 작업 기록의 요청 IP)은 서비스에서 DB 권한을 다시 확인(403). 블로그 관리는 001 `BlogAccess.requireOwnedActiveBlog` 한 곳. 콘텐츠 검색 응답에 본문·비밀 글 내용·이메일 없음. 작업 기록은 INSERT·조회만(수정·삭제 API 없음), 요청 IP는 암호문 저장·최고 관리자에게만 복호화 표시. noindex는 meta + `X-Robots-Tag` + robots.txt | 통과 |
+| IV. 보안과 공개 범위 | 콘솔은 001 `AdminAccessFilter`(요청마다 DB의 현재 권한·상태, 아니면 404) 한 곳. 최고 관리자 전용 동작(권한 변경, 작업 기록의 요청 IP)은 서비스에서 DB 권한을 다시 확인(403). 블로그 관리는 001 `BlogAccess.requireOwnedActiveBlog` 한 곳. 콘텐츠 검색 응답에 본문·비밀 글 내용·이메일 없음. 작업 기록은 INSERT·조회만(수정·삭제 API 없음), 요청 IP는 암호문 저장·최고 관리자에게만 복호화 표시. noindex는 meta + `X-Robots-Tag` + robots.txt | 통과 |
 | V. SSR | 모든 관리 화면은 SSR + `action` 폼(JS 없이 동작). 릴리스 노트 미리보기만 JS가 있으면 `useFetcher`, 없으면 "미리보기" 제출 버튼이 같은 화면을 다시 그린다 | 통과 |
 | VI. 단순함 | 새 라이브러리 없음. 새 캐시 1개(대시보드), 새 정기 작업 1개(작업 기록 정리)만 추가(Complexity Tracking). 메뉴 공개 여부는 런타임 기능 플래그가 아니라 코드 상수(스펙이 머지될 때 바꿈) | 통과 |
 | VII. 다국어 우선 | 새 문구는 `admin`·`manage`·`common`·`errors`와 새 namespace `audit`(작업 종류 이름 약 60개)에 4개 언어로. 예약어·설정 키·작업 기록의 변경 전후 값(JSON)은 번역하지 않음. 새 오류 코드 3개(`LAST_SUPER_ADMIN`·`USER_NOT_ACTIVE`는 005와 공유, `CANNOT_CHANGE_OWN_ROLE`) 번역. 대시보드 날짜 경계는 관리자 시간대(001 FR-153) | 통과 |
@@ -67,7 +67,7 @@
 | 관리자 확인(요청마다) | `users` PK + `role`·`status` | 003 `DatabaseAdminRoleLookup` 그대로 |
 | 관리자 목록 | `idx_users_role_status` (role, status) | `role IN ('ADMIN','SUPER_ADMIN')` |
 | 권한 변경·마지막 최고 관리자 잠금 | `idx_users_role_status` + `SELECT id FROM users WHERE role = 'SUPER_ADMIN' AND status = 'ACTIVE' FOR UPDATE`, 대상 행 PK `FOR UPDATE` | 006 data-model "001 테이블 변경" 규칙 |
-| 작업 기록 쓰기 | `admin_audit_logs`, `fk_admin_audit_logs_admin` | 003 `AdminAuditService`, 동작 값만 추가 |
+| 작업 기록 쓰기 | `admin_audit_logs`, `fk_admin_audit_logs_admin` | 001 `AdminAuditService`, 동작 값만 추가 |
 | 작업 기록 목록(기간) | `idx_admin_audit_logs_created` (created_at) | 기본 최근 7일, 최대 366일 |
 | 작업 기록 목록(관리자·기간) | `idx_admin_audit_logs_admin_created` (admin_id, created_at) | |
 | 작업 기록 목록(작업 종류·기간) | `idx_admin_audit_logs_action_created` (action, created_at) | `action IN (...)` 묶음 필터 |
@@ -113,7 +113,7 @@ CREATE INDEX idx_guestbook_entries_status_created ON guestbook_entries (status A
 
 승인되지 않아도 기능은 같다(5분마다 세 테이블 훑기, 숨김 목록은 `LIMIT`까지 훑기). 승인되면 코드 변경 없이 인덱스만 쓰인다. 005의 선택 제안 `idx_users_nickname`(관리자 회원 닉네임 검색)은 006 관리자 권한 화면의 회원 찾기도 같은 API를 쓰므로 함께 판단하면 된다.
 
-**데이터 보정 없음.** 첫 최고 관리자는 003 `SuperAdminBootstrap`(프로퍼티 `blog.admin.bootstrap-super-admin-email`)이 이미 지정한다.
+**데이터 보정 없음.** 첫 최고 관리자는 001 `SuperAdminBootstrap`(프로퍼티 `blog.admin.bootstrap-super-admin-email`)이 이미 지정한다.
 
 ## Project Structure
 

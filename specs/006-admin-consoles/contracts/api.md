@@ -4,9 +4,9 @@
 
 - 모든 API 경로는 `/api/v1`로 시작한다(아래 표의 경로는 이 접두어를 뺀 것).
 - 표의 "응답"은 공통 틀 `{ header, result, totalCount? }`의 `result`에 들어가는 내용이다. "Page<X>"는 `result`가 X 배열, `totalCount`가 전체 개수이며 `page`는 0부터, `size`는 기본 20·최대 50이다.
-- 권한: "관리자"는 ADMIN·SUPER_ADMIN(003 `AdminAccessFilter`: 요청마다 DB의 현재 권한·상태 확인, 아니면 비로그인 포함 404 `NOT_FOUND`, FR-097). "최고 관리자"는 그중 SUPER_ADMIN만이며, ADMIN이 부르면 서비스가 DB의 현재 권한을 다시 확인해 403 `FORBIDDEN`(관리자에게는 콘솔이 이미 드러나 있으므로 404가 아님, 005 정지 규칙과 같음).
+- 권한: "관리자"는 ADMIN·SUPER_ADMIN(001 `AdminAccessFilter`: 요청마다 DB의 현재 권한·상태 확인, 아니면 비로그인 포함 404 `NOT_FOUND`, FR-097). "최고 관리자"는 그중 SUPER_ADMIN만이며, ADMIN이 부르면 서비스가 DB의 현재 권한을 다시 확인해 403 `FORBIDDEN`(관리자에게는 콘솔이 이미 드러나 있으므로 404가 아님, 005 정지 규칙과 같음).
 - 모든 응답에 `Cache-Control: no-store`.
-- 상태를 바꾸는 요청은 `Origin` 검사를 받는다(001 R27). 관리자의 모든 변경은 같은 트랜잭션에서 작업 기록(FR-106, 003 `AdminAuditService`)에 남는다(SC-017, 매핑 행렬 테스트가 강제 — research A8).
+- 상태를 바꾸는 요청은 `Origin` 검사를 받는다(001 R27). 관리자의 모든 변경은 같은 트랜잭션에서 작업 기록(FR-106, 001 `AdminAuditService`)에 남는다(SC-017, 매핑 행렬 테스트가 강제 — research A8).
 - 이 문서가 기준이며, 구현 후 springdoc OpenAPI와 일치해야 한다(`OpenApiContractTest`).
 - **001~005 API의 요청·응답 변경은 없다.**
 
@@ -130,7 +130,7 @@ type AdminMember = { userId: number; nickname: string; role: "USER" | "ADMIN" | 
   status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN"; createdAt: string };
 ```
 
-- 반영: 다음 관리자 API 요청부터(003 `AdminAccessFilter`가 DB를 읽음). front 상단 "시스템 관리" 표시도 다음 화면 요청부터(`/me`).
+- 반영: 다음 관리자 API 요청부터(001 `AdminAccessFilter`가 DB를 읽음). front 상단 "시스템 관리" 표시도 다음 화면 요청부터(`/me`).
 - 작업 기록: 높아지면 `ROLE_GRANT`, 낮아지면 `ROLE_REVOKE`(target `USER`/id, before/after `{ role }`). 같은 값이면 기록 없음.
 - 마지막 최고 관리자 확인: 트랜잭션 안에서 `SELECT id FROM users WHERE role = 'SUPER_ADMIN' AND status = 'ACTIVE' FOR UPDATE`(006 data-model).
 

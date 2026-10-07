@@ -9,7 +9,7 @@
 ## 현재 코드에서 확인한 것
 
 **backend**
-- 관리자 접근: `admin/AdminAccessFilter`가 `/api/v1/admin/**`에서 `AdminRoleLookup`(`DatabaseAdminRoleLookup`, `existsByIdAndStatusAndRoleIn` 쿼리 1회)으로 DB의 현재 `role`·`status`를 확인하고 아니면 404 `NOT_FOUND`(003 T159). JWT의 role 클레임은 보지 않는다 → FR-097 "권한 회수는 다음 요청부터"가 이미 성립.
+- 관리자 접근: `admin/AdminAccessFilter`가 `/api/v1/admin/**`에서 `AdminRoleLookup`(`DatabaseAdminRoleLookup`, `existsByIdAndStatusAndRoleIn` 쿼리 1회)으로 DB의 현재 `role`·`status`를 확인하고 아니면 404 `NOT_FOUND`(001 T159). JWT의 role 클레임은 보지 않는다 → FR-097 "권한 회수는 다음 요청부터"가 이미 성립.
 - 첫 최고 관리자: `admin/SuperAdminBootstrap`(기동 시 SUPER_ADMIN이 없으면 `blog.admin.bootstrap-super-admin-email` 회원을 지정), `AdminUserRepository.updateRole`·`existsByRole`(001 T154).
 - 작업 기록 쓰기: `admin/audit/AdminAuditLog`(`@Immutable`, 요청 IP `EncryptedStringConverter`), `AdminAuditService.record`·`recordKey`(`Propagation.MANDATORY` — 변경과 같은 트랜잭션), `AdminAuditLogRepository`(save와 대상별 조회만, 삭제 없음), `AuditActions`(003 값만, "005~007이 더한다"). 회원별 블로그 한도는 `AdminUserService`가 `"USER_BLOG_LIMIT_CHANGE"`·`"USER"`를 문자열 상수로 따로 둔다(→ `AuditActions`로 옮김, A6).
 - 003 관리자 API: 주제(`/admin/topics`), 포털 추천·제외·글 확인(`/admin/portal/**`), 설정(`/admin/settings`), 릴리스 노트 9개(`/admin/release-notes/**`: 목록·만들기·조회·수정(`baseRevisionNo`)·게시·게시 중단·삭제·미리보기·수정본 목록·수정본), 회원별 블로그 한도(`PATCH /admin/users/{id}/blog-limit`). 오류 코드 `RELEASE_NOTE_*` 5개는 front `errorCodes.ts`·`errors.json`에도 있다.
@@ -111,10 +111,10 @@
   - `PUT /api/v1/admin/users/{id}/role` `{ role: "USER" | "ADMIN" | "SUPER_ADMIN" }` → 200 `{ userId, nickname, role, status }`. **최고 관리자만**: 서비스가 `SuperAdminGuard.requireSuperAdmin(requesterId)`로 DB의 현재 권한을 다시 확인하고 아니면 403 `FORBIDDEN`(관리자에게는 콘솔이 이미 드러나 있으므로 404가 아님 — 005 정지 규칙과 같음).
   - 규칙: 대상이 ACTIVE가 아니면 409 `USER_NOT_ACTIVE`(정지 회원에게 권한을 주지 않음; 회수는 상태와 무관하게 허용), 자기 자신은 422 `CANNOT_CHANGE_OWN_ROLE`(실수로 마지막 권한을 잃는 것 방지 — 다른 최고 관리자가 바꿔야 함), SUPER_ADMIN을 낮추는 변경은 트랜잭션 안에서 `SELECT id FROM users WHERE role = 'SUPER_ADMIN' AND status = 'ACTIVE' FOR UPDATE`로 잠근 뒤 대상을 빼고 1명 이상 남지 않으면 409 `LAST_SUPER_ADMIN`(006 data-model 규칙). 같은 값이면 변화·기록 없이 200.
   - 작업 기록: 권한이 올라가면 `ROLE_GRANT`, 내려가면 `ROLE_REVOKE`, `target_type = USER`, before/after `{ role }`.
-  - 반영: 003 `AdminAccessFilter`가 요청마다 DB를 읽으므로 회수된 관리자는 다음 관리자 API 요청부터 404, front 콘솔도 다음 화면 요청부터 404(`/me` role). 갱신 토큰 폐기는 하지 않는다(일반 회원으로서의 로그인은 유지).
+  - 반영: 001 `AdminAccessFilter`가 요청마다 DB를 읽으므로 회수된 관리자는 다음 관리자 API 요청부터 404, front 콘솔도 다음 화면 요청부터 404(`/me` role). 갱신 토큰 폐기는 하지 않는다(일반 회원으로서의 로그인은 유지).
   - 관리자 목록 `GET /api/v1/admin/admins` → [{ userId, nickname, role, status, createdAt }](ADMIN·SUPER_ADMIN, 정지 포함, `idx_users_role_status`, 쿼리 1회). 화면 `/admin/admins`: 목록, 최고 관리자에게만 "권한 바꾸기"(선택 + 확인), 일반 관리자에게는 읽기 전용. 부여는 005 회원 상세(`/admin/users/:id`)의 "관리자 권한" 영역에서(회원 찾기는 005 검색) — 005 머지 전에는 `/admin/admins`에 "회원 번호로 부여" 입력을 둔다(005 머지 후 제거하지 않고 둠, 결정 표 15번).
   - `SuperAdminGuard`는 005 정지(마지막 최고 관리자 정지 거부)와 함께 쓴다. 먼저 머지하는 스펙이 만든다.
-- **Rationale**: spec Edge Cases "최고 관리자는 최소 1명", AS3 "다음 요청부터". 잠금은 두 최고 관리자가 서로를 동시에 낮추는 경쟁을 막는다(`AdminRoleConcurrencyIntegrationTest`).
+- **Rationale**: spec Edge Cases "최고 관리자는 최소 1명", AS3 "다음 요청부터". 잠금은 두 최고 관리자가 서로를 동시에 낮추는 경쟁을 막는다(`AdminRoleIntegrationTest`).
 - **Alternatives**: 부여·회수를 POST 두 개로(`/grant`, `/revoke`) — 세 단계 값을 바로 정하는 PUT 하나가 단순(결정 표 14번, contracts "설계 규칙과 다르게 만든 것"은 아님: 자원의 한 필드를 통째로 바꾸는 PUT). 자기 강등 허용(마지막이 아니면) — 실수 방지가 더 중요.
 
 ## A10. 접근 규칙 강제: 관리자 API 404, 블로그 관리 API 주인만 (SC-015, US1 AS5, US2 AS2)
@@ -150,7 +150,7 @@
   - 새 시험 도구(`tests/e2e/support/backend.ts`): `requireAdminTestSettings()`(`E2E_ADMIN_TEST_SETTINGS=1`이 아니면 건너뜀 — 대시보드 캐시를 끈 backend 표시), `adminRequest(playwright)`(005 T003과 같은 함수, 먼저 머지하는 쪽이 만듦), `setRole(request, userId, role)`, `myUserId(request)`.
   - Playwright 프로젝트 `admin`(`testMatch: /admin-.*\.spec\.ts$/`, `dependencies: ["portal"]`(005 머지 후에는 `["moderation"]`도), `workers: 1`): 권한을 바꾸고 릴리스 노트를 게시하는 등 전역 상태를 바꾸므로 다른 시나리오가 끝난 뒤 한 번에 하나씩. `e2e` 프로젝트의 `testIgnore`에 `admin-` 추가.
   - workflow: `blog-front/.github/workflows/ci.yml` `e2e-backend`와 `e2e.yml`의 "Start backend" `env`에 `BLOG_ADMIN_DASHBOARD_CACHE_TTL: 0s`, Playwright 단계 `env`에 `E2E_ADMIN_TEST_SETTINGS: "1"`. 관리자 계정은 003 것(`E2E_ADMIN_EMAIL`, SUPER_ADMIN) 재사용. 권한 시험의 두 번째 관리자는 시나리오 안에서 새 회원을 가입시키고 CI 관리자가 API로 ADMIN을 준다.
-  - 위험 관리: "마지막 최고 관리자" 시험은 CI 관리자가 자기 자신을 낮추는 요청으로 하지 않고(422 `CANNOT_CHANGE_OWN_ROLE`로 먼저 막힘) 단위·통합 시험(`AdminRoleServiceTest`, `AdminRoleConcurrencyIntegrationTest`)에서만 확인한다. E2E가 실패해도 CI 관리자 권한이 바뀌지 않게 한다.
+  - 위험 관리: "마지막 최고 관리자" 시험은 CI 관리자가 자기 자신을 낮추는 요청으로 하지 않고(422 `CANNOT_CHANGE_OWN_ROLE`로 먼저 막힘) 단위·통합 시험(`AdminRoleServiceTest` T043, `AdminRoleIntegrationTest` T045)에서만 확인한다. E2E가 실패해도 CI 관리자 권한이 바뀌지 않게 한다.
   - 릴리스 노트 E2E 버전은 실행마다 겹치지 않게 `900.{실행 시각 분}.{난수}`(게시하면 지울 수 없음 — CI DB는 일회용이지만 로컬 반복 실행 대비). 게시하면 회원 배너가 생기므로 `admin` 프로젝트(마지막)에서만.
   - `portal-us4-admin.spec.ts`의 "`/admin`이 `/admin/topics`로 간다" 단정을 "`/admin`이 대시보드"로 고친다.
-- **Rationale**: 005 M18과 같은 방식. 시험 표시 변수가 없으면 건너뛰므로, CI 변수를 같은 PR에서 넣고 T0xx(CI 확인)에서 skipped 0건을 확인한다.
+- **Rationale**: 005 M18과 같은 방식. 시험 표시 변수가 없으면 건너뛰므로, CI 변수를 같은 PR에서 넣고 tasks.md T071(CI 확인)에서 skipped 0건을 확인한다.
