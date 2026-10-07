@@ -188,3 +188,16 @@ erDiagram
 | spam.duplicate-comment | `{ "windowMinutes": 10, "maxCount": 3 }` | 회원·IP별 같은 내용(정규화 후 해시) (FR-144) |
 
 CAPTCHA(FR-141)는 외부 검증 결과만 확인하며 저장하지 않는다.
+
+## plan 단계에서 확정한 값 (2026-10-07)
+
+[plan.md](./plan.md)·[research.md](./research.md)·[tasks.md](./tasks.md) "구현 전 결정 사항"에서 정했다. 테이블·컬럼은 바꾸지 않았다(필수 DDL 없음, 선택 인덱스 제안 2개는 plan.md "스키마 변경").
+
+- **신고 대상 작성자·블로그**: 트랙백 신고의 `target_user_id`·`target_blog_id`는 서비스 안 글이 보낸 트랙백이면 그 출처 글의 작성자·블로그, 밖에서 온 트랙백이면 둘 다 NULL(받은 블로그를 감점하지 않음). 비회원 댓글·방명록은 `target_user_id` NULL.
+- **처리 단위**: 대상 하나에 조치·기각하면 그 대상의 PENDING 신고 전체를 같은 결과로 닫는다. 대상이 없는 권리 침해 신고는 관리자가 `target_type`·`target_id`를 지정한 뒤 조치한다. 같은 회원은 처리 뒤에도 같은 대상을 다시 신고할 수 없다(UNIQUE).
+- **1.0의 조치 값**: `HIDE_CONTENT`, `SUSPEND_USER`. `REMOVE_FROM_PORTAL`·`BLOCK_EXTERNAL_BLOG`는 007이 외부 글·외부 블로그 처리기와 함께 쓴다. `EXTERNAL_POST`·`EXTERNAL_BLOG` 신고는 007 전까지 받지 않는다.
+- **포털 감점**: 최근 90일(`blog.reports.penalty-window`) 안 ACTIONED 신고가 있는 `target_blog_id`. 관리자 직접 숨김은 넣지 않는다.
+- **권리 침해 메일**: 접수 언어 컬럼이 없어 ko·en 병기. `contact_email_enc`는 처리 후 `blog.privacy.rights-request-retention`(1년) 뒤 NULL.
+- **트랙백 송신 IP**: `blog.privacy.trackback-ip-retention`(90일) 뒤 001 개인정보 파기 작업이 NULL.
+- **보낸 트랙백 기록**: 예약 취소·휴지통 이동·보내기 직전 비공개 전환으로 보내지 않게 된 PENDING 행은 지운다(실패 이유 값을 늘리지 않음).
+- **작성 속도 설정 키**: 위 "작성 속도 제한과 반복 스팸" 표의 키 5개 + `spam.duplicate-comment`를 그대로 쓴다(003 data-model 표의 `ratelimit.*` 객체 하나라는 예시 대신). 004의 `blog.guest.comment-per-minute`·`guestbook-per-minute` 프로퍼티는 이 키로 옮긴다. 반복 스팸은 정규화 후 10자 미만 내용을 세지 않는다.
