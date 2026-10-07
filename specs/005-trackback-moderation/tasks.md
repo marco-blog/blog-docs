@@ -232,7 +232,7 @@ FR: FR-049~055, SC-009 (006 블로그 관리 "받은 트랙백", 블로그 설�
 
 - [x] T102 [US3] 글 상세 트랙백: `blog-front/app/components/trackback/TrackbackList.tsx`·`TrackbackUrlBox.tsx`·`TrackbackRdf.tsx`, `blog-front/app/routes/post-detail.tsx`(loader에 `GET /posts/{id}/trackbacks?page=` 병렬, `tbPage`), 트랙백 신고 버튼(US1 `ReportButton`), 문구 `trackback` namespace(4개 언어)
 - [x] T103 [US3] 보내기 UI: `blog-front/app/components/trackback/TrackbackTargetsField.tsx`·`PingResultList.tsx`를 `app/components/post/PublishSettingsDialog.tsx`와 `app/routes/write.tsx`에, `app/routes/manage/posts.tsx`에 "트랙백 결과", 문구 `trackback`·`post`·`manage` namespace
-- [x] T104 [US3] `blog-front/app/routes/manage/trackbacks.tsx`, `blog-front/app/manage/links.ts`·`routes/manage/layout.tsx`에 "받은 트랙백"(댓글 다음), `routes.ts`의 manage 자식에 `trackbacks`, `app/routes/manage/settings.tsx`에 "트랙백 받기", 문구 `manage`·`trackback` namespace
+- [x] T104 [US3] `blog-front/app/routes/manage/trackbacks.tsx`, `blog-front/app/manage/links.ts`·`routes/manage/layout.tsx`에 "받은 트랙백"(댓글 다음 — 구현은 006 FR-099 순서대로 통계 다음), `routes.ts`의 manage 자식에 `trackbacks`, `app/routes/manage/settings.tsx`에 "트랙백 받기", 문구 `manage`·`trackback` namespace
 
 **Checkpoint**: US3 Independent Test E2E 통과, quickstart #29~#41
 

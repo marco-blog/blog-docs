@@ -17,7 +17,7 @@
 
 - 콘솔 좌측 메뉴(`routes/admin/layout.tsx`, `app/admin/links.ts`)에 "회원 관리", "신고 관리"(처리 대기 수 배지, `GET /admin/reports/summary`), "숨긴 글", "스팸 방어 설정"을 006 spec 메뉴 순서대로 더한다. 003은 블로그 한도 API(`PATCH /admin/users/{id}/blog-limit`)만 있고 화면이 없으므로 회원 상세에 한도 폼을 둔다.
 - 관리자가 아니면 003 `admin/access.server.ts`가 404 화면(존재를 드러내지 않음).
-- 블로그 관리 좌측 메뉴(`routes/manage/layout.tsx`, `app/manage/links.ts`)에 "받은 트랙백"(006 spec 블로그 관리 메뉴 순서, 댓글 다음).
+- 블로그 관리 좌측 메뉴(`routes/manage/layout.tsx`, `app/manage/links.ts`)에 "받은 트랙백"(006 spec 블로그 관리 메뉴 순서). 구현은 006 FR-099 순서대로 통계 다음이다(T104의 "댓글 다음"이 아님).
 
 ## "이용이 제한된 블로그" 화면
 
