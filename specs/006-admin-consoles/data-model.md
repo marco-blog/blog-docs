@@ -179,3 +179,15 @@ erDiagram
 - 독자 "수정 이력"(003 FR-166): `revision_no >= first_published_revision_no`인 수정본만, `created_at`과 번호만 준다(`edited_by`는 주지 않음).
 - 검색(003 FR-165): PUBLISHED 노트마다 보여줄 언어판(요청 언어 → en → ko 중 처음 있는 것) 하나를 고른 뒤 그 행에서만 `MATCH(title, content_text) AGAINST (? IN BOOLEAN MODE)`로 찾는다. 다른 언어판에서만 맞는 노트는 결과에 넣지 않는다. 노트 수가 적으므로(수십~수백) 이 방식으로 충분하다.
 - 이전·다음 버전(003 FR-164): PUBLISHED 노트를 (major, minor, patch)로 정렬해 바로 앞·뒤 행.
+
+## plan 단계에서 확정한 값 (2026-10-07)
+
+[plan.md](./plan.md) "스키마 변경"에서 006 쿼리를 `db/schema-mysql.sql`과 대조했다. 위 테이블·인덱스는 그대로 쓰며 **필수 DDL은 없다**. 아래는 plan에서 정한 값이다(근거는 [research.md](./research.md)).
+
+- `admin_audit_logs.action`: 코드 상수는 backend `admin/audit/AuditActions` 한 곳이고 `AuditActions.ALL`이 전체 목록이다(research A6). 001의 `USER_BLOG_LIMIT_CHANGE`는 지금 `AdminUserService`의 문자열 상수라 `AuditActions`로 옮긴다. 006이 쓰는 값은 `USER_BLOG_LIMIT_CHANGE`, `ROLE_GRANT`, `ROLE_REVOKE`(target `USER`, before/after `{ "role": "ADMIN" }` 형태)와 003의 `RELEASE_NOTE_*`다.
+- 권한 변경의 기록 구분: 권한이 높아지면(USER → ADMIN, USER·ADMIN → SUPER_ADMIN) `ROLE_GRANT`, 낮아지면 `ROLE_REVOKE`. 같은 값이면 기록하지 않는다.
+- `request_ip_enc`: 작업 기록 상세 API에서 최고 관리자에게만 복호화해 보여준다(목록에는 없음).
+- 보관: `blog.admin.audit-retention` 기본 365일(30일 미만이면 기동 실패), 정리 작업 `blog.jobs.audit-purge-cron` 기본 매일 05:15, `blog.jobs.purge-batch-size`(500)씩 id를 모아 삭제(research A7). 리포지토리 `AdminAuditLogRepository`에는 여전히 삭제가 없고 정리 전용 `AdminAuditPurgeRepository`만 지운다.
+- 최고 관리자 최소 1명: 위 "001 테이블 변경"의 잠금 쿼리를 `admin/SuperAdminGuard`에 두고 006 권한 변경과 005 정지가 함께 쓴다. 추가로 최고 관리자는 자기 권한을 바꿀 수 없다(422 `CANNOT_CHANGE_OWN_ROLE`).
+- `release_notes`·`release_note_contents`·`release_note_revisions`: 003이 구현한 저장 규칙을 그대로 쓴다. 006은 화면만 더하고 저장 규칙을 바꾸지 않는다. 수정본 "되돌리기"는 수정본 내용으로 편집기를 채워 다시 저장(새 수정본)하는 방식이며 테이블 변경이 없다.
+- 선택 인덱스 제안 4개(`idx_users_created`, `idx_posts_published_at`, `idx_comments_status_created`, `idx_guestbook_entries_status_created`)는 plan.md "스키마 변경"에 정확한 DDL이 있고 Crowfoot `plan_migration` → marco 승인 전에는 만들지 않는다. 승인되면 이 문서와 [erd.md](../../erd.md)에 인덱스를 더한다.
