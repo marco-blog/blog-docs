@@ -21,7 +21,7 @@
 | 409 | EXTERNAL_BLOG_ALREADY_REGISTERED | 같은 피드의 거절·해제되지 않은 등록이 있음 (FR-112, US1 AS5) | `externalBlogId`, `status`, `claimable`(BLOCKED가 아니면 true) |
 | 409 | EXTERNAL_BLOG_LIMIT_EXCEEDED | 회원당 3개 한도 (FR-112) | `max`: 3 |
 | 404 | EXTERNAL_BLOG_NOT_FOUND | 없거나 관리 회원이 아님 | - |
-| 409 | EXTERNAL_BLOG_STATE_CONFLICT | 지금 상태에서 할 수 없는 전이(승인·거절은 PENDING만, 재개는 PAUSED·STOPPED만, BLOCKED 넘겨받기 등) | `status`, `action` |
+| 409 | EXTERNAL_BLOG_STATE_CONFLICT | 지금 상태에서 할 수 없는 전이(승인·거절은 PENDING만, 재개는 PAUSED·STOPPED만, BLOCKED 넘겨받기, 해제된 등록의 주제 변경, 같은 피드에 다른 활성 등록이 있는 해제 등록 차단 등) | `status`, `action`, `activeExternalBlogId?`(해제 등록 차단 거부 때) |
 | 403 | EXTERNAL_BLOG_OWNERSHIP_REQUIRED | 소유 인증 없이 글 주제·기본 주제 변경 (FR-120, 결정 표 18번) | - |
 | 404 | EXTERNAL_VERIFICATION_NOT_FOUND | 없는 인증이거나 다른 회원의 인증 | - |
 | 422 | EXTERNAL_VERIFICATION_EXPIRED | 24시간 지난 인증 코드 (FR-110) | `expiredAt` |
@@ -89,11 +89,11 @@ type PortalCard = {
 | GET | /me/external-blogs | 회원 | - | 200 `[MyExternalBlog]`(만든 순, 거절·해제 포함 최근 것 먼저, 최대 20) — 어느 블로그 관리에서 열어도 같은 목록(spec Assumptions) |
 | POST | /me/external-blogs | 회원 | `{ feedUrl, defaultTopicId, verificationId?: number }` | 201 MyExternalBlog(`status: PENDING`) + `Location`. 피드 확인 실패 422 `EXTERNAL_FEED_UNREADABLE`, 중복 409 `EXTERNAL_BLOG_ALREADY_REGISTERED`, 한도 409 `EXTERNAL_BLOG_LIMIT_EXCEEDED`, 주제 404 `TOPIC_NOT_FOUND`/422 `TOPIC_NOT_SELECTABLE`, `verificationId`가 같은 회원·같은 피드의 성공한 인증이 아니면 400(field `verificationId`, `INVALID`) (FR-111, FR-112) |
 | GET | /me/external-blogs/{id} | 관리 회원 | - | 200 MyExternalBlog |
-| PATCH | /me/external-blogs/{id} | 인증된 주인 | `{ defaultTopicId }` | 200 MyExternalBlog. 이후 수집되는 글의 기본 주제(이미 수집된 DEFAULT 글은 그대로) |
+| PATCH | /me/external-blogs/{id} | 인증된 주인 | `{ defaultTopicId }` | 200 MyExternalBlog. 이후 수집되는 글의 기본 주제(이미 수집된 DEFAULT 글은 그대로). RELEASED면 409 `EXTERNAL_BLOG_STATE_CONFLICT` |
 | POST | /external-blogs/{id}/claim | 회원 | `{ verificationId }` | 200 MyExternalBlog(`ownershipVerified: true`). 인증이 그 회원의 성공한 인증이고 피드 해시가 같아야 함(아니면 400 field `verificationId` `INVALID`), BLOCKED면 409 `EXTERNAL_BLOG_STATE_CONFLICT`, 거절·해제·없는 등록 404 `EXTERNAL_BLOG_NOT_FOUND`, 한도 409 `EXTERNAL_BLOG_LIMIT_EXCEEDED` (FR-129, US1 AS8) |
-| POST | /me/external-blogs/{id}/release | 관리 회원 | `{ deletePosts: boolean }` | 200 MyExternalBlog(`status: RELEASED`). PENDING·ACTIVE·PAUSED·STOPPED만(아니면 409 `EXTERNAL_BLOG_STATE_CONFLICT`). 포털에서 바로 사라짐, `deletePosts`면 수집된 글 즉시 삭제 (FR-126, research E16) |
+| POST | /me/external-blogs/{id}/release | 관리 회원 | `{ deletePosts: boolean }` (필수, 화면은 기본 선택 없음) | 200 MyExternalBlog(`status: RELEASED`). PENDING·ACTIVE·PAUSED·STOPPED에서 해제: 수집 즉시 중지. `deletePosts: false`(글 남기기)면 이미 수집된 글은 포털에 그대로 노출되고 새 글은 수집하지 않음, `true`(글 삭제)면 수집된 글을 30일 보관 없이 즉시 삭제해 포털에서 바로 사라짐. RELEASED에서는 `deletePosts: true`로 남긴 글을 나중에 삭제(상태 그대로, `false`면 409). 그 밖 상태는 409 `EXTERNAL_BLOG_STATE_CONFLICT` (FR-126, research E16, 결정 표 24번) |
 | GET | /me/external-blogs/{id}/posts?page=&size= | 관리 회원 | - | 200 Page<MyExternalPost>(발행 최신순) |
-| PUT | /me/external-blogs/{id}/posts/{postId}/topic | 인증된 주인 | `{ topicId }` | 200 MyExternalPost(`topicSource: OWNER`). 주제 규칙은 003(소분류, 숨김 아님). 그 글의 PENDING 검수는 SKIPPED. REMOVED 글 404 `EXTERNAL_POST_NOT_FOUND` (FR-120) |
+| PUT | /me/external-blogs/{id}/posts/{postId}/topic | 인증된 주인 | `{ topicId }` | 200 MyExternalPost(`topicSource: OWNER`). 주제 규칙은 003(소분류, 숨김 아님). 그 글의 PENDING 검수는 SKIPPED. REMOVED 글 404 `EXTERNAL_POST_NOT_FOUND`, 등록이 RELEASED면 409 `EXTERNAL_BLOG_STATE_CONFLICT` (FR-120) |
 
 ```ts
 type FeedPreview = {
@@ -127,7 +127,7 @@ type MyExternalBlog = {
   lastFetchedAt: string | null;
   lastSuccessAt: string | null;
   lastFetchResult: FetchResultCode | null;
-  postCount: number;               // ACTIVE 외부 글 수
+  postCount: number;               // ACTIVE 외부 글 수(RELEASED면 남긴 글 수 — 포털에 노출 중)
   createdAt: string;
 };
 type FetchResultCode = "OK" | "NOT_MODIFIED" | "HTTP_ERROR" | "TIMEOUT" | "TOO_LARGE" | "PARSE_ERROR" | "BLOCKED_ADDRESS" | "DNS_ERROR";
@@ -151,14 +151,14 @@ type MyExternalPost = {
 | 메서드 | 경로 | 권한 | 요청 | 응답 |
 |---|---|---|---|---|
 | GET | /admin/external-blogs?status=&q=&page=&size= | 관리자 | - | 200 Page<AdminExternalBlog>. `status` 생략 시 전체(PENDING 먼저, 그다음 최근 만든 순), 값이 있으면 그 상태의 최근 순. `q`는 제목·피드 주소 부분 일치(2~100자) |
-| POST | /admin/external-blogs | 관리자 | `{ feedUrl, defaultTopicId, registrationBasis }` (`registrationBasis` 1~500자 필수) | 201 AdminExternalBlog(`status: ACTIVE`, `registrationType: ADMIN_DIRECT`) + `Location`. 피드 확인·중복·주제 오류는 회원 신청과 같음. 작업 기록 `EXTERNAL_BLOG_CREATE` (FR-111 (2)) |
+| POST | /admin/external-blogs | 관리자 | `{ feedUrl, defaultTopicId, registrationBasis }` (`registrationBasis` 1~500자 필수) | 201 AdminExternalBlog(`status: ACTIVE`, `registrationType: ADMIN_DIRECT`) + `Location`. 피드 확인·중복·주제 오류는 회원 신청과 같음. 같은 피드의 RELEASED 등록에 남은 글은 승인과 같이 옮김. 작업 기록 `EXTERNAL_BLOG_CREATE` (FR-111 (2)) |
 | GET | /admin/external-blogs/{id} | 관리자 | - | 200 AdminExternalBlog. 없으면 404 `EXTERNAL_BLOG_NOT_FOUND` |
 | PATCH | /admin/external-blogs/{id} | 관리자 | `{ defaultTopicId }` | 200 AdminExternalBlog. 작업 기록 `EXTERNAL_BLOG_UPDATE`(전후 주제) |
-| POST | /admin/external-blogs/{id}/approve | 관리자 | - | 200 AdminExternalBlog(`ACTIVE`, `next_fetch_at = now`). PENDING만. 신청 회원에게 알림 `EXTERNAL_BLOG_APPROVED`. 작업 기록 `EXTERNAL_BLOG_APPROVE` (FR-111 (1)) |
+| POST | /admin/external-blogs/{id}/approve | 관리자 | - | 200 AdminExternalBlog(`ACTIVE`, `next_fetch_at = now`). PENDING만. 같은 피드의 RELEASED 등록에 남은 글(탈퇴로 내린 글 제외)을 이 등록으로 옮김(결정 표 24번). 신청 회원에게 알림 `EXTERNAL_BLOG_APPROVED`. 작업 기록 `EXTERNAL_BLOG_APPROVE` (FR-111 (1)) |
 | POST | /admin/external-blogs/{id}/reject | 관리자 | `{ reason }` (1~500자) | 200 AdminExternalBlog(`REJECTED`). PENDING만. 알림 `EXTERNAL_BLOG_REJECTED`(`{ externalBlogTitle, reason }`). 작업 기록 `EXTERNAL_BLOG_REJECT`(사유) |
 | POST | /admin/external-blogs/{id}/pause | 관리자 | `{ reason? }` | 200. ACTIVE만. 수집 멈춤, 글은 그대로. 작업 기록 `EXTERNAL_BLOG_PAUSE` (FR-127) |
 | POST | /admin/external-blogs/{id}/resume | 관리자 | - | 200. PAUSED·STOPPED만. 실패 수 초기화, `next_fetch_at = now`. 작업 기록 `EXTERNAL_BLOG_RESUME` |
-| POST | /admin/external-blogs/{id}/block | 관리자 | `{ reason }` (1~500자) | 200. BLOCKED가 아니면 모두. 글 전부 `REMOVED`(`BLOG_BLOCKED`), 포털에서 바로 사라짐. 되돌리는 API 없음(1.0). 작업 기록 `EXTERNAL_BLOG_BLOCK` (FR-127) |
+| POST | /admin/external-blogs/{id}/block | 관리자 | `{ reason }` (1~500자) | 200. BLOCKED가 아니면 모두(글을 남기고 해제한 RELEASED 포함). 글 전부 `REMOVED`(`BLOG_BLOCKED`), 같은 피드의 RELEASED 등록에 남은 글도 함께 `REMOVED`(`BLOG_BLOCKED`), 포털에서 바로 사라짐. RELEASED 등록인데 같은 피드에 거절·해제가 아닌 다른 등록이 있으면 409 `EXTERNAL_BLOG_STATE_CONFLICT`(`activeExternalBlogId` — 그 등록을 차단하면 남긴 글도 내려감). 되돌리는 API 없음(1.0). 작업 기록 `EXTERNAL_BLOG_BLOCK` (FR-127, research E16) |
 | GET | /admin/external-blogs/{id}/posts?status=&page=&size= | 관리자 | - | 200 Page<AdminExternalPost>(발행 최신순, `status` 생략 시 전체) |
 | POST | /admin/external-posts/{id}/remove | 관리자 | `{ reason }` (1~500자) | 200 AdminExternalPost(`REMOVED`, `ADMIN`). 되돌리지 않음(되돌릴 수 있게 내리려면 아래 포털 제외). 작업 기록 `EXTERNAL_POST_REMOVE` (FR-127) |
 | PUT | /admin/portal/external-exclusions/{externalPostId} | 관리자 | `{ reason }` (1~500자) | 200 ExternalExclusion. 003 `PUT /admin/portal/exclusions/{postId}`와 같은 규칙(멱등, 사유 변경). 작업 기록 `PORTAL_EXCLUDE`(대상 `EXTERNAL_POST`) (FR-123 → 003 FR-093) |
@@ -233,7 +233,7 @@ type TopicMappingRule = { id: number; keyword: string; topicId: number; priority
 
 ## 신고 연동 (005)
 
-- `POST /reports`의 `targetType`에 `EXTERNAL_POST`·`EXTERNAL_BLOG`가 받아진다(처리기 등록, 005 결정 표 5번). 대상은 포털 노출 중인 외부 글, 거절·해제·차단이 아닌 외부 블로그. 아니면 404 `EXTERNAL_POST_NOT_FOUND`/`EXTERNAL_BLOG_NOT_FOUND`.
+- `POST /reports`의 `targetType`에 `EXTERNAL_POST`·`EXTERNAL_BLOG`가 받아진다(처리기 등록, 005 결정 표 5번). 대상은 포털 노출 중인 외부 글(글을 남기고 해제한 블로그의 글 포함), 거절·차단이 아니고 해제라면 남긴 `ACTIVE` 글이 있는 외부 블로그. 아니면 404 `EXTERNAL_POST_NOT_FOUND`/`EXTERNAL_BLOG_NOT_FOUND`.
 - 관리자 신고 처리(`POST /admin/reports/{id}/resolve`)의 조치에 `REMOVE_FROM_PORTAL`(외부 글 `REMOVED`, `REPORT`)과 `BLOCK_EXTERNAL_BLOG`(외부 블로그 차단)가 선택지로 나온다. 미리보기는 제목·요약·블로그 이름·원문 링크·상태.
 - 권리 침해 신고 `POST /rights-requests`의 `targetUrl`이 이 서비스의 `/api/v1/external-posts/{id}/visit`이거나 외부 글의 원문 링크(정규화 해시 일치)면 대상이 자동으로 채워진다.
 
@@ -274,7 +274,7 @@ type TopicMappingRule = { id: number; keyword: string; topicId: number; priority
 | blog.external.verify-checks-per-hour | 10 | 회원당 인증 확인 수 |
 | blog.external.verification-ttl | PT24H | 인증 코드 유효 시간 (FR-110) |
 | blog.external.click-dedupe-window | PT30M | 같은 방문자 클릭 중복 제거 |
-| blog.external.release-retention | P30D | 해제 후 글 보관(삭제 선택 안 함) |
+| blog.external.release-retention | P30D | 해제된 등록에서 내린(`REMOVED`) 글 보관 기간(탈퇴·신고 처리 근거). 주인이 남긴 `ACTIVE` 글과 "글 삭제" 선택에는 적용하지 않음 (결정 표 24번) |
 | blog.external.link-check-cron | `0 30 4 * * MON` | 원문 링크 점검 (FR-117) |
 | blog.external.link-check-batch | 500 | 한 번에 점검하는 글 수 |
 | blog.external.cleanup-cron | `0 30 5 * * *` | 정리 작업 |
