@@ -7,9 +7,9 @@
 | 경로 | 화면 | 렌더링 | loader 호출 API | action | meta |
 |---|---|---|---|---|---|
 | `/admin` (index, 003 리다이렉트 대체) | 콘솔 대시보드: 오늘 가입자·발행 글·댓글, 전체 회원·블로그·공개 글, 처리 대기 신고(005 이후, `/admin/reports` 링크), 최근 7일 가입·발행 막대(`DailyBarChart`), "n분 전 기준·시간대" | SSR | GET /admin/dashboard | - | `{관리자 콘솔}`, noindex |
-| `/admin/contents/posts?q=&handle=&authorId=&status=&visibility=&page=` | 콘텐츠 관리 — 글: 검색 폼, 표(제목 → 글 주소, 블로그, 작성자(→ 회원 상세, 005 이후), 상태·공개 범위, 발행 시각, 댓글 수), 005 이후 행마다 "숨김"/"숨김 해제" | SSR(폼은 GET, 숨김은 `action`) | GET /admin/contents/posts | `intent=hide\|unhide` → PUT·DELETE /admin/contents/posts/{id}/hidden (005) | noindex |
-| `/admin/contents/comments?postId=&authorId=&handle=&status=&q=&page=` | 콘텐츠 관리 — 댓글: 같은 형태, 내용 앞 200자(비밀 댓글은 "비밀 댓글"), 글 제목 링크 `/{handle}/{postId}#comment-{id}` | 같음 | GET /admin/contents/comments | `intent=hide\|unhide` → …/comments/{id}/hidden (005) | noindex |
-| `/admin/contents/guestbook?handle=&authorId=&status=&q=&page=` | 콘텐츠 관리 — 방명록 | 같음 | GET /admin/contents/guestbook-entries | `intent=hide\|unhide` → …/guestbook-entries/{id}/hidden (005) | noindex |
+| `/admin/contents/posts?q=&handle=&authorId=&status=&visibility=&page=` | 콘텐츠 관리 — 글: 검색 폼, 표(제목 → 글 주소, 블로그, 작성자(→ 회원 상세, 005 이후), 상태·공개 범위, 발행 시각, 댓글 수), 005 이후 행마다 "숨김"/"숨김 해제". 숨김은 행마다 숨김 사유 입력란(필수, 1~500자, 005 API가 본문 `{ reason }`을 요구) | SSR(폼은 GET, 숨김은 `action`) | GET /admin/contents/posts | `intent=hide\|unhide` → PUT·DELETE /admin/contents/posts/{id}/hidden (005, PUT 본문 `{ reason }`) | noindex |
+| `/admin/contents/comments?postId=&authorId=&handle=&status=&q=&page=` | 콘텐츠 관리 — 댓글: 같은 형태, 내용 앞 200자(비밀 댓글은 "비밀 댓글"), 글 제목 링크 `/{handle}/{postId}#comment-{id}` | 같음 | GET /admin/contents/comments | `intent=hide\|unhide` → …/comments/{id}/hidden (005, hide는 `reason` 필수 1~500자) | noindex |
+| `/admin/contents/guestbook?handle=&authorId=&status=&q=&page=` | 콘텐츠 관리 — 방명록 | 같음 | GET /admin/contents/guestbook-entries | `intent=hide\|unhide` → …/guestbook-entries/{id}/hidden (005, hide는 `reason` 필수 1~500자) | noindex |
 | `/admin/contents` | 화면 없음, `/admin/contents/posts`로 리다이렉트 | 리다이렉트 | - | - | - |
 | `/admin/reserved-handles` | 예약어 목록(읽기 전용) + "코드 상수로 관리합니다(블로그 주소 규칙 001 FR-002)" | SSR | GET /admin/reserved-handles | - | noindex |
 | `/admin/settings` | 서비스 설정(읽기 전용): 약관 버전, 첨부 파일 한도, 회원당 기본 블로그 수, 작업 기록 보관 기간, 대시보드 갱신 주기와 각 프로퍼티 이름 | SSR | GET /admin/service-settings | - | noindex |
