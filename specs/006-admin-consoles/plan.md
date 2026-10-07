@@ -39,7 +39,7 @@
 
 **Constraints**: 일반 회원·비로그인의 관리자 API 접근 성공 0건(SC-015, 모든 `/api/v1/admin/**` 매핑 행렬), 관리자 변경 작업의 작업 기록 누락 0건(SC-017, 모든 변경 매핑 행렬), 다른 회원의 블로그 관리 API 성공 0건(AS5), 관리자에게도 비밀번호·비공개 글 본문·이메일 원문 노출 0건(FR-104), 작업 기록 수정·삭제 API 0개, 관리 화면 검색 엔진 수집 0건(FR-098), 커버리지 80%, 번역 누락 0건, N+1 금지
 
-**Scale/Scope**: 새 관리자 API 11개(대시보드 1, 콘텐츠 검색 3, 예약어 1, 서비스 설정 1, 작업 기록 3, 관리자 목록 1, 권한 변경 1)와 프로퍼티 4개, 001~005 API 변경 없음(응답 필드 추가도 없음). 새 화면 11개(`/admin` 대시보드, `/admin/contents/posts`·`comments`·`guestbook`, `/admin/reserved-handles`, `/admin/settings`, `/admin/admins`, `/admin/audit-log`, `/admin/release-notes`·`/new`·`/:id`·`/:id/revisions`·`/:id/revisions/:no`), 001~005 화면 변경 6곳(공통 상단 "시스템 관리", 콘솔 레이아웃 메뉴, 블로그 관리 레이아웃 메뉴, 005 회원 상세의 "관리자 권한", 005 숨긴 글 목록을 콘텐츠 관리로 흡수, 003 `/admin` 리다이렉트를 대시보드로)
+**Scale/Scope**: 새 관리자 API 11개(대시보드 1, 콘텐츠 검색 3, 예약어 1, 서비스 설정 1, 작업 기록 3, 관리자 목록 1, 권한 변경 1)와 프로퍼티 4개, 001~005 API 변경 없음(응답 필드 추가도 없음). 새 화면 14개(`/admin` 대시보드, `/admin/contents/posts`·`comments`·`guestbook`, `/admin/reserved-handles`, `/admin/settings`, `/admin/admins`, `/admin/audit-log`·`/:id`, `/admin/release-notes`·`/new`·`/:id`·`/:id/revisions`·`/:id/revisions/:no`), 001~005 화면 변경 6곳(공통 상단 "시스템 관리", 콘솔 레이아웃 메뉴, 블로그 관리 레이아웃 메뉴, 005 회원 상세의 "관리자 권한", 005 숨긴 글 목록을 콘텐츠 관리로 흡수, 003 `/admin` 리다이렉트를 대시보드로)
 
 ## Constitution Check
 
