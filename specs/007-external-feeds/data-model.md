@@ -141,7 +141,7 @@ erDiagram
 | title | VARCHAR(200) | 블로그 이름(피드에서 읽음) |
 | site_url | VARCHAR(1000) | 블로그 주소 |
 | feed_url | VARCHAR(1000) | NOT NULL. RSS·Atom 주소 |
-| feed_url_hash | CHAR(64) | SHA-256(정규화한 feed_url: 소문자 호스트, 기본 포트·끝 `/`·조각 제거) |
+| feed_url_hash | CHAR(64) | SHA-256(정규화한 feed_url: 스킴 제거(http·https 같게), 소문자 호스트, 기본 포트·끝 `/`·조각 제거 — research E6) |
 | active_feed_hash | CHAR(64) | 생성 컬럼 `IF(status IN ('REJECTED','RELEASED'), NULL, feed_url_hash)` STORED, UNIQUE. 거절·해제되지 않은 등록은 피드당 하나 (FR-112) |
 | feed_format | VARCHAR(10) | RSS / ATOM |
 | default_topic_id | BIGINT | FK topics, NOT NULL. 기본 주제(소분류) |
@@ -211,7 +211,7 @@ erDiagram
 | title | VARCHAR(300) | 제목(태그 제거) |
 | summary | VARCHAR(200) | 요약: 태그 제거 텍스트 최대 200자. 본문 전체는 저장하지 않음 (FR-114, SC-021) |
 | image_url | VARCHAR(1000) | 피드의 대표 이미지 원본 주소 |
-| thumbnail_key | CHAR(22) | backend가 받아 줄여 저장한 썸네일의 키(research R27, 저장 방식은 007 plan). 소유 인증 블로그 글에만 노출 (FR-128) |
+| thumbnail_key | CHAR(22) | backend가 받아 줄여 저장한 썸네일의 키(001 research R27). 소유 인증 블로그 글만 받고 노출 (FR-128). 저장·제공 방식은 [research E7](./research.md) |
 | published_at | DATETIME(6) | 피드의 발행 시각 |
 | feed_terms_json | JSON | 피드의 카테고리·태그 원문 배열(매핑 규칙·자동 분류 입력) |
 | topic_id | BIGINT | FK topics, NOT NULL. 최종 주제(소분류) |
@@ -274,3 +274,32 @@ erDiagram
 
 - 인덱스: (status, created_at).
 - 운영자가 확정하면 `CONFIRMED`, `external_posts.topic_id = confirmed_topic_id`, `topic_source = REVIEW`, `topic_decided_at = now`. 블로그 주인이 먼저 주제를 바꾸면(FR-120) `SKIPPED`.
+
+## plan에서 확정한 값
+
+계획 단계([plan.md](./plan.md), [research.md](./research.md))에서 정한 값이다. 테이블·컬럼은 바뀌지 않았다(필수 DDL 없음, 선택 인덱스 제안 1개는 plan.md "스키마 변경").
+
+| 항목 | 확정 값 | 근거 |
+|---|---|---|
+| 피드 주소 정규화 | 스킴 제거(http·https를 같은 피드로), 호스트 소문자·IDN은 ASCII, 기본 포트·끝 `/`·조각 제거, 쿼리 유지. `link_hash`도 같은 함수 | research E6 |
+| `feed_url` 저장 값 | 리다이렉트를 따라간 최종 주소 | research E2 |
+| 요약(`summary`) | 태그를 지운 일반 텍스트, 코드 포인트 200자(넘으면 199자 + "…"). HTML로 저장·렌더링하지 않음 | research E4 |
+| 대표 이미지(`image_url`) | enclosure(image/*) → Media RSS `media:thumbnail`·`media:content` → 본문 첫 `<img>`(1×1 추적 픽셀 제외). http/https만 | research E4 |
+| 썸네일 파일 | 소유 인증 블로그 글만 받아 600x400 cover 한 크기, `{blog.media.thumbnail-dir}/external/{key 앞 2자}/{key}.{jpg\|png}`, 주소 `/media/external/{key}`(원본 저장 안 함). 인증이 나중에 되면 최근 30일 글 최대 100개 소급 | research E7 |
+| `published_at` | 발행 → 수정 시각 → 처음 수집한 시각. 미래 시각은 수집 시각으로 | research E4 |
+| 최초 수집 범위 | `last_success_at`이 NULL인 첫 성공 수집만 최근 30일, 한 번에 최대 100개 | research E5 |
+| 같은 글 갱신 | 제목·요약·이미지 주소·발행 시각·카테고리만 갱신, 주제는 다시 정하지 않음, REMOVED는 되살리지 않음 | research E5 |
+| 수집 임대 | 고른 행의 `next_fetch_at`을 `now + 10분`으로 미뤄 두고 수집 결과로 다시 정함 | research E1 |
+| 실패 지연 | `min(30분 × 2^(실패 수 - 1), 12시간)`, 첫 실패부터 7일이면 STOPPED | research E5 |
+| 인증 코드(`code`) | `java21-verify-` + base62 12자(26자), 같은 회원·피드에 유효한 코드가 있으면 재사용 | research E8 |
+| 회원 한도에서 세는 상태 | `REJECTED`·`RELEASED`를 뺀 전부(BLOCKED 포함). 넘겨받기도 셈 | research E8 |
+| 관리 권한 | `member_id` 회원: 조회·해제. 글 주제·기본 주제 변경은 `ownership_verified = true`일 때만 | tasks 결정 표 18번 |
+| 자동 분류 | `KeywordTopicClassifier`, `classifier_version = 'keyword-v1'`, 신뢰도 `(top/sum) × min(1, top/4)` | research E9 |
+| 검수 행 생성 | 주제가 RULE이 아니고 자동 분류 신뢰도가 기준 미만(일치 없음 포함)인 새 글. ACTIVE 글의 PENDING만 목록에 | research E10 |
+| 포털 노출(외부) | 글 ACTIVE, 블로그 ACTIVE·PAUSED·STOPPED, 포털 제외 없음, `published_at <= now`, 주제가 운영자 숨김 아님 | research E13 |
+| 해제 후 글 | 포털에서는 즉시 사라짐(블로그 상태로 판단). "글도 삭제"면 바로 행 삭제, 아니면 30일 뒤 정리 작업이 삭제 | research E16, 결정 표 24번 |
+| 클릭 | 같은 방문자·같은 글 30분 1회, `click_count`와 일별 행을 같은 트랜잭션에서, 일별 행 90일 보관 | research E14 |
+| 원문 링크 점검 | 주 1회, HEAD(405·501이면 GET 0바이트), 404·410·도메인 없음만 `LINK_BROKEN` | research E12 |
+| 운영 설정 범위 | `external.fetch-interval` PT10M~PT24H, `external.auto-classify-min-confidence` 0~1, `external.score-weight` 0~10 | contracts/api.md |
+| 작업 기록 값 추가 | 006 data-model 표의 값 + `EXTERNAL_BLOG_UPDATE`(관리자의 기본 주제 변경, 대상 EXTERNAL_BLOG) | contracts/api.md |
+
